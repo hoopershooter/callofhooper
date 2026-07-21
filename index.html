@@ -110,7 +110,20 @@
   #createRoomBar { display: flex; gap: 8px; margin-bottom: 14px; }
   #createRoomBar input { padding: 10px 12px; border-radius: 6px; border: none; font-size: 15px; width: 220px; }
 
-  #connectionStatus { margin-top: 14px; font-size: 13px; opacity: 0.6; }
+#connectionStatus { margin-top: 14px; font-size: 13px; opacity: 0.6; }
+
+  #characterSelectScreen h2 { font-size: 28px; margin-bottom: 20px; }
+  #characterGrid {
+    display: flex; gap: 16px; margin-bottom: 22px; flex-wrap: wrap;
+    justify-content: center; max-width: 90vw;
+  }
+  .characterCard {
+    width: 120px; height: 160px; background: rgba(255,255,255,0.08);
+    border: 3px solid transparent; border-radius: 8px; cursor: pointer;
+    overflow: hidden; display: flex; align-items: center; justify-content: center;
+  }
+  .characterCard img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .characterCard:hover { border-color: #ffd75e; }
 </style>
 </style>
 </style>
@@ -121,6 +134,12 @@
   <h1>💩 Call of Hooper</h1>
   <p>A Noah Hooper multiplayer shooter</p>
   <button class="menuButton" id="playButton">Play</button>
+</div>
+
+<div id="characterSelectScreen" class="hidden">
+  <h2>Choose Your Character</h2>
+  <div id="characterGrid"></div>
+  <button class="menuButton secondary" id="backToTitleFromCharacterButton">Back</button>
 </div>
 
 <div id="serverListScreen" class="hidden">
@@ -240,14 +259,14 @@ function renderRoomList(rooms) {
 }
 
 function joinRoom(roomId) {
-  socket.emit('joinRoom', roomId, (response) => {
+  socket.emit('joinRoom', { roomId, character: selectedCharacter }, (response) => {
     if (response.success) {
       currentRoomId = response.roomId;
       serverListScreen.classList.add('hidden');
       gameOverlay.classList.remove('hidden');
       if (response.existingPlayers) {
         for (const p of response.existingPlayers) {
-          spawnOrUpdatePlayer(p.id, p.x, p.y, p.z, p.yaw);
+          spawnOrUpdatePlayer(p.id, p.x, p.y, p.z, p.yaw, p.character);
         }
       }
     } else {
@@ -257,10 +276,34 @@ function joinRoom(roomId) {
   });
 }
 
+const characterSelectScreen = document.getElementById('characterSelectScreen');
+const characterGrid = document.getElementById('characterGrid');
+const backToTitleFromCharacterButton = document.getElementById('backToTitleFromCharacterButton');
+const CHARACTER_COUNT = 5;
+let selectedCharacter = 1;
+
+for (let i = 1; i <= CHARACTER_COUNT; i++) {
+  const card = document.createElement('div');
+  card.className = 'characterCard';
+  const img = document.createElement('img');
+  img.src = 'character' + i + '.jpeg';
+  card.appendChild(img);
+  card.addEventListener('click', () => {
+    selectedCharacter = i;
+    characterSelectScreen.classList.add('hidden');
+    serverListScreen.classList.remove('hidden');
+    requestRoomList();
+  });
+  characterGrid.appendChild(card);
+}
+
 playButton.addEventListener('click', () => {
   titleScreen.classList.add('hidden');
-  serverListScreen.classList.remove('hidden');
-  requestRoomList();
+  characterSelectScreen.classList.remove('hidden');
+});
+backToTitleFromCharacterButton.addEventListener('click', () => {
+  characterSelectScreen.classList.add('hidden');
+  titleScreen.classList.remove('hidden');
 });
 backToTitleButton.addEventListener('click', () => {
   serverListScreen.classList.add('hidden');
@@ -352,7 +395,13 @@ gunGroup.position.copy(GUN_HIP_POSITION);
 gunGroup.rotation.copy(GUN_HIP_ROTATION);
 
 camera.add(gunGroup);
-
+const characterTextures = [
+  new THREE.TextureLoader().load("character1.jpeg"),
+  new THREE.TextureLoader().load("character2.jpeg"),
+  new THREE.TextureLoader().load("character3.jpeg"),
+  new THREE.TextureLoader().load("character4.jpeg"),
+  new THREE.TextureLoader().load("character5.jpeg"),
+];
 const dummyTexture = new THREE.TextureLoader().load("dummy.png");
 const towerTexture = new THREE.TextureLoader().load("tower2.png", () => generateCity());
 
@@ -814,45 +863,22 @@ makeDummy(90, 5);
 // ---------- Other players (multiplayer) ----------
 const otherPlayers = {}; // socketId -> { group, targetPos, targetYaw, currentYaw }
 
-function createPlayerModel() {
-  const group = new THREE.Group();
-
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.4, 0.4, 1.3, 8),
-    new THREE.MeshStandardMaterial({ color: 0x3a6ea5, flatShading: true })
-  );
-  body.position.y = 1.0;
-  group.add(body);
-
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.32, 10, 10),
-    new THREE.MeshStandardMaterial({ color: 0xe0b088, flatShading: true })
-  );
-  head.position.y = 1.85;
-  group.add(head);
-
-  // small forward-facing nose so you can tell which way they're looking
-  const nose = new THREE.Mesh(
-    new THREE.ConeGeometry(0.06, 0.2, 6),
-    new THREE.MeshStandardMaterial({ color: 0x2b2b2b })
-  );
-  nose.rotation.x = Math.PI / 2;
-  nose.position.set(0, 1.85, -0.32);
-  group.add(nose);
-
-  scene.add(group);
-  return group;
+function createPlayerModel(character) {
+  const tex = characterTextures[(character || 1) - 1] || characterTextures[0];
+  const material = new THREE.SpriteMaterial({ map: tex, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(2, 3, 1);
+  scene.add(sprite);
+  return sprite;
 }
 
-function spawnOrUpdatePlayer(id, x, y, z, yaw) {
+function spawnOrUpdatePlayer(id, x, y, z, yaw, character) {
   if (!otherPlayers[id]) {
-    const group = createPlayerModel();
-    group.position.set(x, y, z);
-    group.rotation.y = yaw;
-    otherPlayers[id] = { group, targetPos: new THREE.Vector3(x, y, z), targetYaw: yaw, currentYaw: yaw };
+    const sprite = createPlayerModel(character || 1);
+    sprite.position.set(x, y, z);
+    otherPlayers[id] = { group: sprite, targetPos: new THREE.Vector3(x, y, z) };
   } else {
     otherPlayers[id].targetPos.set(x, y, z);
-    otherPlayers[id].targetYaw = yaw;
   }
 }
 
@@ -863,19 +889,14 @@ function removePlayer(id) {
   }
 }
 
-socket.on('playerJoined', (data) => spawnOrUpdatePlayer(data.id, 0, EYE_HEIGHT, 0, 0));
+socket.on('playerJoined', (data) => spawnOrUpdatePlayer(data.id, 0, EYE_HEIGHT, 0, 0, data.character));
 socket.on('playerLeft', (data) => removePlayer(data.id));
-socket.on('playerUpdate', (data) => spawnOrUpdatePlayer(data.id, data.x, data.y, data.z, data.yaw));
+socket.on('playerUpdate', (data) => spawnOrUpdatePlayer(data.id, data.x, data.y, data.z, data.yaw, data.character));
 
 function updateOtherPlayers(dt) {
   for (const id in otherPlayers) {
     const p = otherPlayers[id];
     p.group.position.lerp(p.targetPos, Math.min(1, dt * 10));
-    let diff = p.targetYaw - p.currentYaw;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    p.currentYaw += diff * Math.min(1, dt * 10);
-    p.group.rotation.y = p.currentYaw;
   }
 }
 
@@ -885,7 +906,7 @@ function sendLocalPlayerState(now) {
   if (!currentRoomId) return;
   if (now - lastNetworkSend < NETWORK_SEND_INTERVAL) return;
   lastNetworkSend = now;
-  socket.emit('playerUpdate', { x: camera.position.x, y: camera.position.y, z: camera.position.z, yaw: yaw });
+  socket.emit('playerUpdate', { x: camera.position.x, y: camera.position.y, z: camera.position.z, yaw: yaw, character: selectedCharacter });
 }
 
 // ---------- Pointer lock + look controls ----------
