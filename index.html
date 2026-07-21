@@ -37,6 +37,14 @@
     font-size: 28px; color: #ffd75e; opacity: 0; pointer-events: none;
     z-index: 15; transition: opacity 0.15s;
   }
+#deathOverlay {
+    position: fixed; inset: 0; z-index: 25; display: none;
+    background: rgba(120,0,0,0.35);
+    color: #fff; align-items: center; justify-content: center; flex-direction: column;
+    text-align: center; pointer-events: none;
+  }
+  #deathOverlay.active { display: flex; }
+  #deathOverlay h2 { font-size: 36px; text-shadow: 0 2px 6px rgba(0,0,0,0.7); }
 
   #scopeOverlay {
     position: fixed; inset: 0; z-index: 12; display: none;
@@ -166,6 +174,9 @@
 
 <div id="crosshair"></div>
 <div id="hitmarker">HIT!</div>
+<div id="deathOverlay">
+  <h2>You were killed</h2>
+</div>
 <audio id="bgMusic" src="music.mp3" loop preload="auto"></audio>
 <audio id="fartSound" src="fart.mp3" preload="auto"></audio>
 <audio id="headshotSound" src="headshot.mp3" preload="auto"></audio>
@@ -909,6 +920,33 @@ function sendLocalPlayerState(now) {
   socket.emit('playerUpdate', { x: camera.position.x, y: camera.position.y, z: camera.position.z, yaw: yaw, character: selectedCharacter });
 }
 
+  // ---------- Death / respawn ----------
+const deathOverlay = document.getElementById('deathOverlay');
+let isDead = false;
+
+socket.on('playerKilled', (data) => {
+  if (data.targetId === socket.id) {
+    isDead = true;
+    deathOverlay.classList.add('active');
+  } else if (otherPlayers[data.targetId]) {
+    otherPlayers[data.targetId].group.visible = false;
+  }
+});
+
+socket.on('playerRespawned', (data) => {
+  if (data.id === socket.id) {
+    isDead = false;
+    deathOverlay.classList.remove('active');
+    camera.position.set(data.x, data.y, data.z);
+    verticalVelocity = 0;
+    onGround = true;
+  } else if (otherPlayers[data.id]) {
+    otherPlayers[data.id].group.visible = true;
+    otherPlayers[data.id].targetPos.set(data.x, data.y, data.z);
+    otherPlayers[data.id].group.position.set(data.x, data.y, data.z);
+  }
+});
+  
 // ---------- Pointer lock + look controls ----------
 const overlay = document.getElementById('overlay');
 let yaw = Math.PI, pitch = 0;
@@ -1004,6 +1042,8 @@ let verticalVelocity = 0;
 let onGround = true;
 
 function updateMovement(dt) {
+  if (isDead) return; // frozen in place while dead
+
   const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)).multiplyScalar(-1);
   const right = new THREE.Vector3(-forward.z, 0, forward.x);
 
@@ -1098,48 +1138,7 @@ function makeTracerMesh(start, end, radius) {
   return { mesh, mat };
 }
 
-let lastShotTime = 0;
-const SHOT_COOLDOWN = 1500; // ms between shots
-
-function shoot() {
-  const now = performance.now();
-  if (now - lastShotTime < SHOT_COOLDOWN) return;
-  lastShotTime = now;
-
-  playSfx(fartSound, SFX_VOLUME);
-
-  const dir = new THREE.Vector3();
-  camera.getWorldDirection(dir);
-
-  // Set the raycaster origin, direction, and camera
-  raycaster.set(camera.position, dir);
-  raycaster.camera = camera; // <--- FIX: Tells Three.js how to evaluate Sprites!
-
-  let hitDummy = null;
-  let travelDist = 200; // max range if nothing is hit
-
-  // 1. Check environment (towers/walls)
-  const validCollisionMeshes = collisionMeshes.filter(mesh => mesh !== null);
-  const envHits = raycaster.intersectObjects(validCollisionMeshes, true);
-  if (envHits.length > 0 && envHits[0].distance < travelDist) {
-    travelDist = envHits[0].distance;
-  }
-
-  // 2. Check target dummies
-  for (const d of dummies) {
-    if (!d || !d.alive || !d.group) continue; // <--- FIX: Guards against null objects
-
-    const hits = raycaster.intersectObject(d.group);
-    if (hits.length > 0 && hits[0].distance < travelDist) {
-      travelDist = hits[0].distance;
-      hitDummy = d;
-    }
-  }
-
-  const startPos = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
-  const endPos = camera.position.clone().add(dir.clone().multiplyScalar(travelDist));
-
-  // Visual projectile
+function spawnBulletVisual(startPos, dir, travelDist) {
   const proj = new THREE.Mesh(
     new THREE.SphereGeometry(0.12, 8, 8),
     new THREE.MeshStandardMaterial({ color: 0x6b4423 })
@@ -1149,11 +1148,90 @@ function shoot() {
 
   const bulletSpeed = 8000;
   const travelTime = travelDist / bulletSpeed;
-  projectiles.push({ 
-    mesh: proj, 
-    velocity: dir.clone().multiplyScalar(bulletSpeed), 
-    life: Math.min(0.4, travelTime) 
+  projectiles.push({
+    mesh: proj,
+    velocity: dir.clone().multiplyScalar(bulletSpeed),
+    life: Math.min(0.4, travelTime)
   });
+
+  const endPos = startPos.clone().add(dir.clone().multiplyScalar(travelDist));
+  const { mesh: tracerMesh, mat: tracerMat } = makeTracerMesh(startPos, endPos, 0.06);
+  scene.add(tracerMesh);
+  tracers.push({ line: tracerMesh, material: tracerMat, life: 2.5, maxLife: 2.5 });
+}
+
+socket.on('shotFired', (data) => {
+  const start = new THREE.Vector3(data.startPos.x, data.startPos.y, data.startPos.z);
+  const end = new THREE.Vector3(data.endPos.x, data.endPos.y, data.endPos.z);
+  const dist = start.distanceTo(end);
+  const dir = end.clone().sub(start).normalize();
+  spawnBulletVisual(start, dir, dist);
+});
+
+let lastShotTime = 0;
+const SHOT_COOLDOWN = 1500; // ms between shots
+
+function shoot() {
+  if (isDead) return;
+
+  const now = performance.now();
+  if (now - lastShotTime < SHOT_COOLDOWN) return;
+  lastShotTime = now;
+
+  playSfx(fartSound, SFX_VOLUME);
+
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+
+  raycaster.set(camera.position, dir);
+  raycaster.camera = camera;
+
+  let hitDummy = null;
+  let hitPlayerId = null;
+  let travelDist = 200;
+
+  const validCollisionMeshes = collisionMeshes.filter(mesh => mesh !== null);
+  const envHits = raycaster.intersectObjects(validCollisionMeshes, true);
+  if (envHits.length > 0 && envHits[0].distance < travelDist) {
+    travelDist = envHits[0].distance;
+  }
+
+  for (const d of dummies) {
+    if (!d || !d.alive || !d.group) continue;
+    const hits = raycaster.intersectObject(d.group);
+    if (hits.length > 0 && hits[0].distance < travelDist) {
+      travelDist = hits[0].distance;
+      hitDummy = d;
+      hitPlayerId = null;
+    }
+  }
+
+  for (const id in otherPlayers) {
+    const p = otherPlayers[id];
+    if (!p.group.visible) continue; // can't hit players who are already dead
+    const hits = raycaster.intersectObject(p.group);
+    if (hits.length > 0 && hits[0].distance < travelDist) {
+      travelDist = hits[0].distance;
+      hitPlayerId = id;
+      hitDummy = null;
+    }
+  }
+
+  const startPos = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
+  spawnBulletVisual(startPos, dir, travelDist);
+
+  socket.emit('shotFired', {
+    startPos: { x: startPos.x, y: startPos.y, z: startPos.z },
+    endPos: {
+      x: startPos.x + dir.x * travelDist,
+      y: startPos.y + dir.y * travelDist,
+      z: startPos.z + dir.z * travelDist
+    }
+  });
+
+  if (hitDummy) registerHit(hitDummy);
+  if (hitPlayerId) socket.emit('hitPlayer', { targetId: hitPlayerId });
+}
 
   // Tracer line
   const { mesh: tracerMesh, mat: tracerMat } = makeTracerMesh(startPos, endPos, 0.06);
