@@ -13,7 +13,7 @@ const io = new Server(httpServer, {
   cors: { origin: '*' }
 });
 
-const rooms = {}; // roomId -> { id, name, players: Map<socketId, {x,y,z,yaw}>, maxPlayers }
+const rooms = {}; // roomId -> { id, name, players: Map<socketId, {x,y,z,yaw,character}>, maxPlayers }
 let nextRoomId = 1;
 
 function roomSummaries() {
@@ -44,7 +44,9 @@ io.on('connection', (socket) => {
     broadcastRoomList();
   });
 
-  socket.on('joinRoom', (roomId, callback) => {
+  socket.on('joinRoom', (data, callback) => {
+    const roomId = data && data.roomId;
+    const character = (data && data.character) || 1;
     const room = rooms[roomId];
     if (!room) {
       callback({ success: false, reason: 'Room no longer exists.' });
@@ -58,18 +60,16 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     socket.currentRoom = roomId;
 
-    // send the new player the current state of everyone already here
     const existingPlayers = [];
     for (const [id, state] of room.players.entries()) {
       existingPlayers.push({ id, ...state });
     }
 
-    room.players.set(socket.id, { x: 0, y: 1.7, z: 0, yaw: 0 });
+    room.players.set(socket.id, { x: 0, y: 1.7, z: 0, yaw: 0, character });
 
     callback({ success: true, roomId, playerCount: room.players.size, maxPlayers: room.maxPlayers, existingPlayers });
 
-    // tell everyone else already in the room that a new player joined
-    socket.to(roomId).emit('playerJoined', { id: socket.id });
+    socket.to(roomId).emit('playerJoined', { id: socket.id, character });
 
     broadcastRoomList();
   });
