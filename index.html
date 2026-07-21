@@ -1233,14 +1233,6 @@ function shoot() {
   if (hitPlayerId) socket.emit('hitPlayer', { targetId: hitPlayerId });
 }
 
-  // Tracer line
-  const { mesh: tracerMesh, mat: tracerMat } = makeTracerMesh(startPos, endPos, 0.06);
-  scene.add(tracerMesh);
-  tracers.push({ line: tracerMesh, material: tracerMat, life: 2.5, maxLife: 2.5 });
-
-  if (hitDummy) registerHit(hitDummy);
-}
-
 function registerHit(d) {
   d.alive = false;
   d.group.visible = false;
