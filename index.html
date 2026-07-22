@@ -149,6 +149,12 @@
   #leaderboard th { text-align: left; opacity: 0.5; font-weight: normal; padding: 2px 6px; border-bottom: 1px solid rgba(255,255,255,0.12); }
   #leaderboard td { padding: 3px 6px; }
   #leaderboard tr.selfRow { color: #ffd75e; font-weight: bold; }
+  #micStatus {
+    position: fixed; bottom: 16px; left: 16px; z-index: 10;
+    background: rgba(0,0,0,0.5); color: #fff; padding: 6px 12px; border-radius: 6px;
+    font-size: 13px; opacity: 0.6; pointer-events: none;
+  }
+  #micStatus.talking { opacity: 1; background: rgba(220,60,60,0.75); }
 
   #characterSelectScreen h2 { font-size: 28px; margin-bottom: 20px; }
   #characterGrid {
@@ -244,8 +250,9 @@
 </div>
 <div id="hud">
   <div class="score">Hits: <span id="score">0</span></div>
-  <div>WASD move · Space jump · Mouse look · Click shoot · Esc release mouse </div>
+  <div>WASD move · Space jump · Mouse look · Click shoot · Esc release mouse · Hold V to talk</div>
 </div>
+<div id="micStatus">🎙️ Hold V to talk</div>
 
 <div id="leaderboard">
   <h3>Leaderboard</h3>
@@ -338,21 +345,24 @@ function renderRoomList(rooms) {
 }
 
 function joinRoom(roomId) {
-  socket.emit('joinRoom', { roomId, character: selectedCharacter, username: getLocalUsername() }, (response) => {
+  socket.emit('joinRoom', { roomId, character: selectedCharacter, username: getLocalUsername() }, async (response) => {
     if (response.success) {
       currentRoomId = response.roomId;
       serverListScreen.classList.add('hidden');
       gameOverlay.classList.remove('hidden');
 
-      const spawnY = getGroundHeight(response.spawnX, response.spawnZ) + EYE_HEIGHT;
+    const spawnY = getGroundHeight(response.spawnX, response.spawnZ) + EYE_HEIGHT;
       camera.position.set(response.spawnX, spawnY, response.spawnZ);
       verticalVelocity = 0;
       onGround = true;
+
+      await ensureMicAccess();
 
       if (response.existingPlayers) {
         for (const p of response.existingPlayers) {
           playerUsernames[p.id] = p.username || 'Player';
           spawnOrUpdatePlayer(p.id, p.x, p.y, p.z, p.yaw, p.character);
+          createVoicePeer(p.id, true); // we're the newcomer, so we initiate the voice connection to each existing player
         }
       }
     } else {
@@ -978,6 +988,7 @@ function removePlayer(id) {
     scene.remove(otherPlayers[id].group);
     delete otherPlayers[id];
   }
+  removeVoicePeer(id);
 }
 
 const playerUsernames = {}; // socketId -> username, kept separately so death messages work even after a model is removed
@@ -1051,6 +1062,105 @@ socket.on('playerRespawned', (data) => {
     otherPlayers[data.id].group.visible = true;
     otherPlayers[data.id].targetPos.set(data.x, spawnY, data.z);
     otherPlayers[data.id].group.position.set(data.x, spawnY, data.z);
+  }
+});
+
+  // ---------- Voice chat (WebRTC, push-to-talk) ----------
+const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+const voicePeers = {}; // socketId -> { pc, audioEl }
+let localMicStream = null;
+const micStatusEl = document.getElementById('micStatus');
+
+async function ensureMicAccess() {
+  if (localMicStream) return localMicStream;
+  try {
+    localMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    localMicStream.getAudioTracks().forEach(track => track.enabled = false); // starts muted — only on while V is held
+    micStatusEl.textContent = '🎙️ Hold V to talk';
+  } catch (err) {
+    console.error('Microphone access denied or unavailable:', err);
+    micStatusEl.textContent = '🎙️ Mic unavailable';
+  }
+  return localMicStream;
+}
+
+function createVoicePeer(remoteId, isInitiator) {
+  if (voicePeers[remoteId]) return voicePeers[remoteId];
+
+  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+  if (localMicStream) {
+    localMicStream.getTracks().forEach(track => pc.addTrack(track, localMicStream));
+  }
+
+  const audioEl = document.createElement('audio');
+  audioEl.autoplay = true;
+  document.body.appendChild(audioEl);
+
+  pc.ontrack = (event) => {
+    audioEl.srcObject = event.streams[0];
+  };
+
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit('voiceSignal', { targetId: remoteId, signal: { type: 'candidate', candidate: event.candidate } });
+    }
+  };
+
+  voicePeers[remoteId] = { pc, audioEl };
+
+  if (isInitiator) {
+    pc.createOffer()
+      .then(offer => pc.setLocalDescription(offer))
+      .then(() => {
+        socket.emit('voiceSignal', { targetId: remoteId, signal: { type: 'offer', sdp: pc.localDescription } });
+      })
+      .catch(err => console.error('Voice offer failed:', err));
+  }
+
+  return voicePeers[remoteId];
+}
+
+function removeVoicePeer(remoteId) {
+  const peer = voicePeers[remoteId];
+  if (!peer) return;
+  peer.pc.close();
+  peer.audioEl.remove();
+  delete voicePeers[remoteId];
+}
+
+socket.on('voiceSignal', async (data) => {
+  const { id: fromId, signal } = data;
+  const peer = createVoicePeer(fromId, false);
+
+  try {
+    if (signal.type === 'offer') {
+      await peer.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+      const answer = await peer.pc.createAnswer();
+      await peer.pc.setLocalDescription(answer);
+      socket.emit('voiceSignal', { targetId: fromId, signal: { type: 'answer', sdp: peer.pc.localDescription } });
+    } else if (signal.type === 'answer') {
+      await peer.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+    } else if (signal.type === 'candidate') {
+      await peer.pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+    }
+  } catch (err) {
+    console.error('Voice signaling error:', err);
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyV' && localMicStream && currentRoomId) {
+    localMicStream.getAudioTracks().forEach(track => track.enabled = true);
+    micStatusEl.classList.add('talking');
+    micStatusEl.textContent = '🎙️ Talking...';
+  }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'KeyV' && localMicStream) {
+    localMicStream.getAudioTracks().forEach(track => track.enabled = false);
+    micStatusEl.classList.remove('talking');
+    micStatusEl.textContent = '🎙️ Hold V to talk';
   }
 });
   
@@ -1152,6 +1262,7 @@ mainMenuButton.addEventListener('click', () => {
   settingsMenu.classList.remove('active');
   gameOverlay.classList.add('hidden');
   for (const id in otherPlayers) removePlayer(id);
+  for (const id in voicePeers) removeVoicePeer(id);
   titleScreen.classList.remove('hidden');
 });
 
@@ -1347,7 +1458,13 @@ function spawnBulletVisual(startPos, dir, travelDist) {
   tracers.push({ line: tracerMesh, material: tracerMat, life: 2.5, maxLife: 2.5 });
 }
 
-socket.on('shotFired', (data) => {
+socket.on('voiceSignal', (data) => {
+    const roomId = socket.currentRoom;
+    if (!roomId || !data || !data.targetId) return;
+    const targetSocket = io.sockets.sockets.get(data.targetId);
+    if (!targetSocket || targetSocket.currentRoom !== roomId) return;
+    targetSocket.emit('voiceSignal', { id: socket.id, signal: data.signal });
+  });
   const start = new THREE.Vector3(data.startPos.x, data.startPos.y, data.startPos.z);
   const end = new THREE.Vector3(data.endPos.x, data.endPos.y, data.endPos.z);
   const dist = start.distanceTo(end);
