@@ -704,9 +704,9 @@ const tex = makeBuildingWallTexture();
 }
 
 // ---------- Procedural city field ----------
-const BUILDING_COUNT = 400;         // crank this up/down to taste
-const FIELD_RADIUS = 55;            // how far out buildings can spawn (stays inside WORLD_BOUND=95)
-const MIN_SPACING = 0.5;              // min empty gap between building footprints, so streets stay walkable
+const BUILDING_COUNT = 600;         // crank this up/down to taste
+const FIELD_RADIUS = 44;            // how far out buildings can spawn (stays inside WORLD_BOUND=95)
+const MIN_SPACING = 0.3;              // min empty gap between building footprints, so streets stay walkable
 const BUILDING_STYLES = ['flat', 'flat', 'stepped', 'pyramid']; // weighted — 'flat' shows up twice as often
 
 function seededRandom(seed) {
@@ -721,14 +721,14 @@ const rand = seededRandom(1337); // fixed seed = same layout every load
 function generateCity() {
   const placedBuildings = [];
   let attempts = 0;
-  while (placedBuildings.length < BUILDING_COUNT && attempts < BUILDING_COUNT * 40) {
+  while (placedBuildings.length < BUILDING_COUNT && attempts < BUILDING_COUNT * 1500) {
     attempts++;
     const angle = rand() * Math.PI * 2;
     const dist = Math.sqrt(rand()) * FIELD_RADIUS;
     const x = Math.cos(angle) * dist;
     const z = Math.sin(angle) * dist;
-    const w = 4 + rand() * 7;
-    const d = 4 + rand() * 7;
+    const w = 3 + rand() * 4;
+    const d = 3 + rand() * 4;
     const footprintRadius = Math.sqrt(w * w + d * d) / 2;
 
     let tooClose = false;
