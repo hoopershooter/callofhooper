@@ -137,6 +137,18 @@
   #createRoomBar input { padding: 10px 12px; border-radius: 6px; border: none; font-size: 15px; width: 220px; }
 
 #connectionStatus { margin-top: 14px; font-size: 13px; opacity: 0.6; }
+  #leaderboard {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 18; display: none;
+    background: rgba(20,15,10,0.92); color: #fff; border-radius: 10px;
+    padding: 18px 22px; min-width: 300px;
+  }
+  #leaderboard.active { display: block; }
+  #leaderboard h3 { margin: 0 0 12px 0; font-size: 20px; text-align: center; }
+  #leaderboard table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #leaderboard th { text-align: left; opacity: 0.6; font-weight: normal; padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+  #leaderboard td { padding: 6px 8px; }
+  #leaderboard tr.selfRow { color: #ffd75e; font-weight: bold; }
 
   #characterSelectScreen h2 { font-size: 28px; margin-bottom: 20px; }
   #characterGrid {
@@ -232,7 +244,15 @@
 </div>
 <div id="hud">
   <div class="score">Hits: <span id="score">0</span></div>
-  <div>WASD move · Space jump · Mouse look · Click shoot · Esc release mouse</div>
+  <div>WASD move · Space jump · Mouse look · Click shoot · Esc release mouse · Tab leaderboard</div>
+</div>
+
+<div id="leaderboard">
+  <h3>Leaderboard</h3>
+  <table>
+    <thead><tr><th>Player</th><th>Kills</th><th>Deaths</th></tr></thead>
+    <tbody id="leaderboardBody"></tbody>
+  </table>
 </div>
 <script>
   // crypto.randomUUID() only exists in secure contexts (HTTPS or localhost).
@@ -982,6 +1002,32 @@ const deathOverlay = document.getElementById('deathOverlay');
 let isDead = false;
 
 const killedByText = document.getElementById('killedByText');
+  // ---------- Leaderboard ----------
+const leaderboardEl = document.getElementById('leaderboard');
+const leaderboardBody = document.getElementById('leaderboardBody');
+
+socket.on('leaderboardUpdate', (list) => {
+  leaderboardBody.innerHTML = '';
+  for (const entry of list) {
+    const row = document.createElement('tr');
+    if (entry.id === socket.id) row.className = 'selfRow';
+    row.innerHTML = '<td></td><td></td><td></td>';
+    row.children[0].textContent = entry.username;
+    row.children[1].textContent = entry.kills;
+    row.children[2].textContent = entry.deaths;
+    leaderboardBody.appendChild(row);
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Tab' && currentRoomId) {
+    e.preventDefault(); // stop Tab from shifting browser focus away from the game
+    leaderboardEl.classList.add('active');
+  }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'Tab') leaderboardEl.classList.remove('active');
+});
 
 socket.on('playerKilled', (data) => {
   if (data.targetId === socket.id) {
