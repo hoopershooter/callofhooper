@@ -1469,13 +1469,7 @@ function spawnBulletVisual(startPos, dir, travelDist) {
   tracers.push({ line: tracerMesh, material: tracerMat, life: 2.5, maxLife: 2.5 });
 }
 
-socket.on('voiceSignal', (data) => {
-    const roomId = socket.currentRoom;
-    if (!roomId || !data || !data.targetId) return;
-    const targetSocket = io.sockets.sockets.get(data.targetId);
-    if (!targetSocket || targetSocket.currentRoom !== roomId) return;
-    targetSocket.emit('voiceSignal', { id: socket.id, signal: data.signal });
-  });
+socket.on('shotFired', (data) => {
   const start = new THREE.Vector3(data.startPos.x, data.startPos.y, data.startPos.z);
   const end = new THREE.Vector3(data.endPos.x, data.endPos.y, data.endPos.z);
   const dist = start.distanceTo(end);
