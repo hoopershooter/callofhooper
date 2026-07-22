@@ -678,6 +678,9 @@ scene.add(ground);
 // ---------- City buildings ----------
 const colliders = []; // {x,z,radius} for simple circular collision approximation
 const collisionMeshes = []; // actual meshes bullets can hit (buildings, walls)
+const platforms = []; // {x,z,baseHalfW,baseHalfD,topHalfW,topHalfD,h}
+const ramps = []; // {xMin,xMax,zStart,zEnd,yStart,yEnd} - linear stair ramps
+const flatFloors = []; // {xMin,xMax,zMin,zMax,y} - flat indoor floor slabs (upper house floors)
 
 function makeBuilding(x, z, w, d, h, style) {
   const group = new THREE.Group();
@@ -989,9 +992,6 @@ const PLATFORM_FIELD_RADIUS = WORLD_BOUND - 8;
 const PLATFORM_MIN_GAP = 4;
 const PLATFORM_COLORS = [0xffffff, 0xffffff, 0xffffff];
 
-const platforms = []; // {x,z,baseHalfW,baseHalfD,topHalfW,topHalfD,h}
-const ramps = []; // {xMin,xMax,zStart,zEnd,yStart,yEnd} - linear stair ramps
-const flatFloors = []; // {xMin,xMax,zMin,zMax,y} - flat indoor floor slabs (upper house floors)
 
 function makeFrustumGeometry(baseHalfW, baseHalfD, topHalfW, topHalfD, h) {
   const positions = [];
