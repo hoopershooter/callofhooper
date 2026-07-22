@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS_PER_ROOM = 8;
 const RESPAWN_DELAY_MS = 3000;
+const SPAWN_PROTECTION_MS = 3000; // invulnerable for this long after joining or respawning
 
 const httpServer = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -14,7 +15,7 @@ const io = new Server(httpServer, {
   cors: { origin: '*' }
 });
 
-const rooms = {}; // roomId -> { id, name, players: Map<socketId, {x,y,z,yaw,character,alive}>, maxPlayers }
+const rooms = {}; // roomId -> { id, name, players: Map<socketId, {x,y,z,yaw,character,alive,username,invulnerableUntil}>, maxPlayers }
 let nextRoomId = 1;
 
 function roomSummaries() {
@@ -48,6 +49,7 @@ io.on('connection', (socket) => {
   socket.on('joinRoom', (data, callback) => {
     const roomId = data && data.roomId;
     const character = (data && data.character) || 1;
+    const username = ((data && data.username) || 'Player').toString().trim().slice(0, 16) || 'Player';
     const room = rooms[roomId];
     if (!room) {
       callback({ success: false, reason: 'Room no longer exists.' });
@@ -66,11 +68,14 @@ io.on('connection', (socket) => {
       existingPlayers.push({ id, ...state });
     }
 
-    room.players.set(socket.id, { x: 0, y: 1.7, z: 0, yaw: 0, character, alive: true });
+    room.players.set(socket.id, {
+      x: 0, y: 1.7, z: 0, yaw: 0, character, username,
+      alive: true, invulnerableUntil: Date.now() + SPAWN_PROTECTION_MS
+    });
 
     callback({ success: true, roomId, playerCount: room.players.size, maxPlayers: room.maxPlayers, existingPlayers });
 
-    socket.to(roomId).emit('playerJoined', { id: socket.id, character });
+    socket.to(roomId).emit('playerJoined', { id: socket.id, character, username });
 
     broadcastRoomList();
   });
@@ -95,10 +100,18 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     const targetId = data && data.targetId;
     const target = room.players.get(targetId);
-    if (!target || target.alive === false) return; // already dead or doesn't exist — ignore
+    const killer = room.players.get(socket.id);
+    if (!target || !killer) return;
+    if (target.alive === false) return; // already dead — ignore
+    if (Date.now() < (target.invulnerableUntil || 0)) return; // spawn-protected — ignore
 
     target.alive = false;
-    io.to(roomId).emit('playerKilled', { targetId, killerId: socket.id });
+    io.to(roomId).emit('playerKilled', {
+      targetId,
+      killerId: socket.id,
+      killerUsername: killer.username,
+      targetUsername: target.username
+    });
 
     setTimeout(() => {
       if (!rooms[roomId]) return;
@@ -106,6 +119,7 @@ io.on('connection', (socket) => {
       if (!t) return;
       t.alive = true;
       t.x = 0; t.y = 1.7; t.z = 0; t.yaw = 0;
+      t.invulnerableUntil = Date.now() + SPAWN_PROTECTION_MS;
       io.to(roomId).emit('playerRespawned', { id: targetId, x: 0, y: 1.7, z: 0 });
     }, RESPAWN_DELAY_MS);
   });
