@@ -885,8 +885,11 @@ function generateWarkworthGrove() {
     collisionMeshes.push(body, roofCap);
     colliders.push({ x, z, halfW: rotationY === 0 ? 1.6 : 5, halfD: rotationY === 0 ? 5 : 1.6 });
   }
-  makeTrainCar(GX, GZ, 0);
-  makeTrainCar(GX - 9, GZ + 6, Math.PI / 2);
+makeTrainCar(GX,      GZ,      0);
+makeTrainCar(GX + 12, GZ,      0);
+makeTrainCar(GX - 12, GZ,      0);
+makeTrainCar(GX,      GZ + 12, Math.PI / 2);
+makeTrainCar(GX,      GZ - 12, Math.PI / 2);
 
   // low side fences marking the flanking lanes
   makeWall(GX - 16, GZ, gWallT, 22, 2.2);
