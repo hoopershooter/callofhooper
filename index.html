@@ -844,7 +844,7 @@ makeWall(WORLD_BOUND, 0, wallThickness, WORLD_BOUND * 2, wallHeight);
 // ---------- Warkworth Grove (small symmetric map, separate area of the world) ----------
 function generateWarkworthGrove() {
   const GX = 400, GZ = 400;      // grove's world-space center, far from the city so they never overlap
-  const GROVE_BOUND = 25;
+  const GROVE_BOUND = 30;
   const gWallH = 8, gWallT = 2;
 
   // perimeter fence
@@ -854,8 +854,39 @@ function generateWarkworthGrove() {
   makeWall(GX + GROVE_BOUND, GZ, gWallT, GROVE_BOUND * 2, gWallH);
 
 // two mirrored, walkable two-story houses facing each other across the yard
-  makeHouse(GX, GZ - 18, 1);
-  makeHouse(GX, GZ + 18, -1);
+// two mirrored, walkable two-story houses facing each other across the yard
+  makeHouse(GX, GZ - 22, 1);
+  makeHouse(GX, GZ + 22, -1);
+
+  // train-car obstacles down the middle of the yard, for cover between the houses
+  function makeTrainCar(x, z, rotationY) {
+    const carMat = new THREE.MeshStandardMaterial({ color: 0x8a3b32, flatShading: true });
+    const stripeMat = new THREE.MeshStandardMaterial({ color: 0xd8c9a8, flatShading: true });
+    const group = new THREE.Group();
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3, 10), carMat);
+    body.position.y = 1.8;
+    body.castShadow = body.receiveShadow = true;
+    group.add(body);
+
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(3.25, 0.5, 10), stripeMat);
+    stripe.position.y = 1.6;
+    group.add(stripe);
+
+    const roofCap = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.3, 10.2), carMat);
+    roofCap.position.y = 3.3;
+    roofCap.castShadow = true;
+    group.add(roofCap);
+
+    group.position.set(x, 0, z);
+    group.rotation.y = rotationY;
+    scene.add(group);
+
+    collisionMeshes.push(body, roofCap);
+    colliders.push({ x, z, halfW: rotationY === 0 ? 1.6 : 5, halfD: rotationY === 0 ? 5 : 1.6 });
+  }
+  makeTrainCar(GX, GZ, 0);
+  makeTrainCar(GX - 9, GZ + 6, Math.PI / 2);
 
   // low side fences marking the flanking lanes
   makeWall(GX - 16, GZ, gWallT, 22, 2.2);
@@ -894,38 +925,35 @@ function floorSlab(x, y, z, w, d, color) {
 }
 
 function makeHouse(cx, houseCenterZ, sign) {
-  const T = 0.3;          // wall thickness
-  const FLOOR_H = 3.2;    // per-floor height
-  const HW = 7;           // half footprint width (x)
-  const wz = (localZ) => houseCenterZ + localZ * sign;
+  const SCALE = 1.8;
+  const T = 0.4;
+  const FLOOR_H = 3.2 * SCALE;
+  const HW = 7 * SCALE;
+  const wz = (localZ) => houseCenterZ + localZ * sign * SCALE;
   const wallColor = 0xd8c9a8;
 
-  // --- Ground floor perimeter ---
-  houseWall(cx - HW, 0, houseCenterZ, T, FLOOR_H, 10, wallColor); // west
-  houseWall(cx + HW, 0, houseCenterZ, T, FLOOR_H, 10, wallColor); // east
+  houseWall(cx - HW, 0, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
+  houseWall(cx + HW, 0, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
 
-  // entrance wall (yard-facing), doorway gap x:[-1.5,1.5]
+  const doorHalf = 1.5 * SCALE;
   const entranceZ = wz(5);
-  houseWall(cx - (HW + 1.5) / 2, 0, entranceZ, HW - 1.5, FLOOR_H, T, wallColor);
-  houseWall(cx + (HW + 1.5) / 2, 0, entranceZ, HW - 1.5, FLOOR_H, T, wallColor);
+  houseWall(cx - (HW + doorHalf) / 2, 0, entranceZ, HW - doorHalf, FLOOR_H, T, wallColor);
+  houseWall(cx + (HW + doorHalf) / 2, 0, entranceZ, HW - doorHalf, FLOOR_H, T, wallColor);
 
-  // back wall, window gap x:[-1.5,1.5]
   const backZ = wz(-5);
-  houseWall(cx - (HW + 1.5) / 2, 0, backZ, HW - 1.5, FLOOR_H, T, wallColor);
-  houseWall(cx + (HW + 1.5) / 2, 0, backZ, HW - 1.5, FLOOR_H, T, wallColor);
+  houseWall(cx - (HW + doorHalf) / 2, 0, backZ, HW - doorHalf, FLOOR_H, T, wallColor);
+  houseWall(cx + (HW + doorHalf) / 2, 0, backZ, HW - doorHalf, FLOOR_H, T, wallColor);
 
-  // interior divider: entry/living, doorway gap x:[-1.2,1.2]
+  const innerDoorHalf = 1.2 * SCALE;
   const div1Z = wz(1.8);
-  houseWall(cx - (HW + 1.2) / 2, 0, div1Z, HW - 1.2, FLOOR_H, T, wallColor);
-  houseWall(cx + (HW + 1.2) / 2, 0, div1Z, HW - 1.2, FLOOR_H, T, wallColor);
+  houseWall(cx - (HW + innerDoorHalf) / 2, 0, div1Z, HW - innerDoorHalf, FLOOR_H, T, wallColor);
+  houseWall(cx + (HW + innerDoorHalf) / 2, 0, div1Z, HW - innerDoorHalf, FLOOR_H, T, wallColor);
 
-  // interior divider: living/back, doorway gap x:[-1.2,1.2]
   const div2Z = wz(-1.8);
-  houseWall(cx - (HW + 1.2) / 2, 0, div2Z, HW - 1.2, FLOOR_H, T, wallColor);
-  houseWall(cx + (HW + 1.2) / 2, 0, div2Z, HW - 1.2, FLOOR_H, T, wallColor);
+  houseWall(cx - (HW + innerDoorHalf) / 2, 0, div2Z, HW - innerDoorHalf, FLOOR_H, T, wallColor);
+  houseWall(cx + (HW + innerDoorHalf) / 2, 0, div2Z, HW - innerDoorHalf, FLOOR_H, T, wallColor);
 
-  // --- Staircase (corner of the living room, against the east wall) ---
-  const STAIR_XMIN = cx + 4.5, STAIR_XMAX = cx + 7;
+  const STAIR_XMIN = cx + 4.5 * SCALE, STAIR_XMAX = cx + 7 * SCALE;
   const stairZStartWorld = wz(-1.8), stairZEndWorld = wz(-0.2);
   const STEPS = 8;
   for (let i = 0; i < STEPS; i++) {
@@ -933,38 +961,35 @@ function makeHouse(cx, houseCenterZ, sign) {
     const stepZ = stairZStartWorld + tMid * (stairZEndWorld - stairZStartWorld);
     const stepY = (i + 0.5) * (FLOOR_H / STEPS);
     const step = new THREE.Mesh(
-      new THREE.BoxGeometry(2.5, FLOOR_H / STEPS, Math.abs(stairZEndWorld - stairZStartWorld) / STEPS),
+      new THREE.BoxGeometry(2.5 * SCALE, FLOOR_H / STEPS, Math.abs(stairZEndWorld - stairZStartWorld) / STEPS),
       new THREE.MeshStandardMaterial({ color: 0x8a7256, flatShading: true })
     );
-    step.position.set(cx + 5.75, stepY, stepZ);
+    step.position.set(cx + 5.75 * SCALE, stepY, stepZ);
     step.castShadow = step.receiveShadow = true;
     scene.add(step);
-    collisionMeshes.push(step); // visual + blocks bullets, but NOT added to `colliders` so it doesn't block walking
+    collisionMeshes.push(step);
   }
   ramps.push({ xMin: STAIR_XMIN, xMax: STAIR_XMAX, zStart: stairZStartWorld, zEnd: stairZEndWorld, yStart: 0, yEnd: FLOOR_H });
 
-  // --- Upper floor slab (a "picture frame" of pieces leaving the stairwell open) ---
   const slabZ1 = wz(-5), slabZ2 = wz(5);
-  floorSlab(cx - 1.25, FLOOR_H, houseCenterZ, 11.5, 10);
+  floorSlab(cx - 1.25 * SCALE, FLOOR_H, houseCenterZ, 11.5 * SCALE, 10 * SCALE);
   const eastZa = wz(-5), eastZb = wz(-1.8);
-  floorSlab(cx + 5.75, FLOOR_H, (eastZa + eastZb) / 2, 2.5, Math.abs(eastZb - eastZa));
+  floorSlab(cx + 5.75 * SCALE, FLOOR_H, (eastZa + eastZb) / 2, 2.5 * SCALE, Math.abs(eastZb - eastZa));
   const eastZc = wz(-0.2), eastZd = wz(5);
-  floorSlab(cx + 5.75, FLOOR_H, (eastZc + eastZd) / 2, 2.5, Math.abs(eastZd - eastZc));
-  flatFloors.push({ xMin: cx - HW, xMax: STAIR_XMIN, zMin: Math.min(slabZ1, slabZ2), zMax: Math.max(slabZ1, slabZ2), y: FLOOR_H });
+  floorSlab(cx + 5.75 * SCALE, FLOOR_H, (eastZc + eastZd) / 2, 2.5 * SCALE, Math.abs(eastZd - eastZc));
+  flatFloors.push({ xMin: cx - HW, xMax: cx - 4.5 * SCALE + HW, zMin: Math.min(slabZ1, slabZ2), zMax: Math.max(slabZ1, slabZ2), y: FLOOR_H });
   flatFloors.push({ xMin: STAIR_XMIN, xMax: STAIR_XMAX, zMin: Math.min(eastZa, eastZb), zMax: Math.max(eastZa, eastZb), y: FLOOR_H });
   flatFloors.push({ xMin: STAIR_XMIN, xMax: STAIR_XMAX, zMin: Math.min(eastZc, eastZd), zMax: Math.max(eastZc, eastZd), y: FLOOR_H });
 
-  // --- Upper floor perimeter walls (single open room) ---
-  houseWall(cx - HW, FLOOR_H, houseCenterZ, T, FLOOR_H, 10, wallColor);
-  houseWall(cx + HW, FLOOR_H, houseCenterZ, T, FLOOR_H, 10, wallColor);
-  houseWall(cx - (HW + 1.5) / 2, FLOOR_H, entranceZ, HW - 1.5, FLOOR_H, T, wallColor);
-  houseWall(cx + (HW + 1.5) / 2, FLOOR_H, entranceZ, HW - 1.5, FLOOR_H, T, wallColor);
-  houseWall(cx - (HW + 1.5) / 2, FLOOR_H, backZ, HW - 1.5, FLOOR_H, T, wallColor);
-  houseWall(cx + (HW + 1.5) / 2, FLOOR_H, backZ, HW - 1.5, FLOOR_H, T, wallColor);
+  houseWall(cx - HW, FLOOR_H, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
+  houseWall(cx + HW, FLOOR_H, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
+  houseWall(cx - (HW + doorHalf) / 2, FLOOR_H, entranceZ, HW - doorHalf, FLOOR_H, T, wallColor);
+  houseWall(cx + (HW + doorHalf) / 2, FLOOR_H, entranceZ, HW - doorHalf, FLOOR_H, T, wallColor);
+  houseWall(cx - (HW + doorHalf) / 2, FLOOR_H, backZ, HW - doorHalf, FLOOR_H, T, wallColor);
+  houseWall(cx + (HW + doorHalf) / 2, FLOOR_H, backZ, HW - doorHalf, FLOOR_H, T, wallColor);
 
-  // --- Roof cap ---
   const roof = new THREE.Mesh(
-    new THREE.BoxGeometry(14.6, 0.3, 10.6),
+    new THREE.BoxGeometry(14.6 * SCALE, 0.3, 10.6 * SCALE),
     new THREE.MeshStandardMaterial({ color: 0x6b4a3a, flatShading: true })
   );
   roof.position.set(cx, FLOOR_H * 2 + 0.15, houseCenterZ);
@@ -972,15 +997,13 @@ function makeHouse(cx, houseCenterZ, sign) {
   scene.add(roof);
   collisionMeshes.push(roof);
 
-  // --- Entrance porch overhang (decorative only) ---
   const porch = new THREE.Mesh(
-    new THREE.BoxGeometry(4, 0.2, 2),
+    new THREE.BoxGeometry(4 * SCALE, 0.2, 2 * SCALE),
     new THREE.MeshStandardMaterial({ color: 0x6b4a3a, flatShading: true })
   );
   porch.position.set(cx, FLOOR_H - 0.1, wz(6));
   scene.add(porch);
-}
-generateWarkworthGrove();
+
 // ---------- Procedural elevated platforms (ramped on all sides, flat-topped) ----------
 const PLATFORM_COUNT = 40;
 const PLATFORM_MIN_SIZE = 20;       // base footprint size range
