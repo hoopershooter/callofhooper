@@ -58,7 +58,8 @@
   }
   #deathOverlay.active { display: flex; }
   #deathOverlay h2 { font-size: 36px; text-shadow: 0 2px 6px rgba(0,0,0,0.7); }
-
+  #deathOverlay p { font-size: 18px; opacity: 0.9; margin-top: 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.7); }
+  
   #scopeOverlay {
     position: fixed; inset: 0; z-index: 12; display: none;
     pointer-events: none;
@@ -98,7 +99,11 @@
   #titleScreen.hidden, #serverListScreen.hidden, #characterSelectScreen.hidden { display: none; }
 
   #titleScreen h1 { font-size: 46px; margin-bottom: 6px; }
-  #titleScreen p { opacity: 0.75; margin-bottom: 28px; }
+  #titleScreen p { opacity: 0.75; margin-bottom: 20px; }
+  #usernameInput {
+    padding: 10px 14px; border-radius: 6px; border: none; font-size: 15px;
+    width: 220px; text-align: center; margin-bottom: 18px;
+  }
   .menuButton {
     background: #ffd75e; color: #2b1f14; border: none; border-radius: 6px;
     font-size: 17px; font-weight: bold; padding: 12px 28px; cursor: pointer;
@@ -154,6 +159,7 @@
 <div id="titleScreen">
   <h1>💩 Call of Hooper</h1>
   <p>A Noah Hooper multiplayer shooter</p>
+  <input type="text" id="usernameInput" placeholder="Enter a username" maxlength="16">
   <button class="menuButton" id="playButton">Play</button>
 </div>
 
@@ -214,6 +220,7 @@
 <div id="hitmarker">HIT!</div>
 <div id="deathOverlay">
   <h2>You were killed</h2>
+  <p id="killedByText"></p>
 </div>
 <audio id="bgMusic" src="music.mp3" loop preload="auto"></audio>
 <audio id="fartSound" src="fart.mp3" preload="auto"></audio>
