@@ -1133,7 +1133,19 @@ function createVoicePeer(remoteId, isInitiator) {
     console.log('[voice] connection state with', remoteId, ':', pc.connectionState);
   };
 
-  voicePeers[remoteId] = { pc, audioEl };
+voicePeers[remoteId] = { pc, audioEl };
+
+  if (isInitiator) {
+    pc.createOffer()
+      .then(offer => pc.setLocalDescription(offer))
+      .then(() => {
+        socket.emit('voiceSignal', { targetId: remoteId, signal: { type: 'offer', sdp: pc.localDescription } });
+      })
+      .catch(err => console.error('Voice offer failed:', err));
+  }
+
+  return voicePeers[remoteId];
+}
 
 function removeVoicePeer(remoteId) {
   const peer = voicePeers[remoteId];
