@@ -6,7 +6,24 @@ const MAX_PLAYERS_PER_ROOM = 8;
 const RESPAWN_DELAY_MS = 3000;
 const SPAWN_PROTECTION_MS = 3000;
 
+// change this to something only you know — anyone with this key can force-refresh everyone
+const ADMIN_KEY = "hooper-admin-2026";
+
 const httpServer = http.createServer((req, res) => {
+  const url = new URL(req.url, 'http://' + req.headers.host);
+
+  if (url.pathname === '/admin/refresh') {
+    if (url.searchParams.get('key') !== ADMIN_KEY) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      res.end('Forbidden — wrong or missing key.');
+      return;
+    }
+    io.emit('forceRefresh');
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Refresh signal sent to all connected players.');
+    return;
+  }
+
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Call of Hooper multiplayer server is running.');
 });
@@ -15,7 +32,7 @@ const io = new Server(httpServer, {
   cors: { origin: '*' }
 });
 
-const rooms = {}; // roomId -> { id, name, players: Map<socketId, {...,kills,deaths}>, maxPlayers }
+const rooms = {};
 let nextRoomId = 1;
 
 function roomSummaries() {
