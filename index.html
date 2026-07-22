@@ -304,6 +304,9 @@ const connectionStatusEl = document.getElementById('connectionStatus');
 let currentRoomId = null;
 
 socket.on('connect', () => { connectionStatusEl.textContent = 'Connected to server.'; });
+  socket.on('forceRefresh', () => {
+  location.reload();
+});
 socket.on('disconnect', () => { connectionStatusEl.textContent = 'Disconnected — trying to reconnect...'; });
 socket.on('connect_error', () => {
   connectionStatusEl.textContent = 'Could not reach the server. Is it running at ' + SERVER_URL + '?';
