@@ -11,8 +11,8 @@ const ADMIN_KEY = "hooper-admin-2026";
 // spread across the map — server doesn't know building layout, so these sit
 // out toward the edges/corners where the procedural city is naturally sparser
 const SPAWN_POINTS = [
-  { x: 35, z: 0 }, { x: -35, z: 0 }, { x: 0, z: 35 }, { x: 0, z: -35 },
-  { x: 25, z: 25 }, { x: -25, z: 25 }, { x: 25, z: -25 }, { x: -25, z: -25 }
+  { x: 8.5, z: 0 }, { x: 26.9, z: 26.9 }, { x: 0, z: 17.5 }, { x: -5.3, z: 5.3 },
+  { x: -28.5, z: 0 }, { x: -27.2, z: -27.2 }, { x: 0, z: -35.5 }, { x: 25.1, z: -25.1 }
 ];
 
 function pickSpawnPoint(room, excludeId) {
