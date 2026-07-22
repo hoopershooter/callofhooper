@@ -6,8 +6,33 @@ const MAX_PLAYERS_PER_ROOM = 8;
 const RESPAWN_DELAY_MS = 3000;
 const SPAWN_PROTECTION_MS = 3000;
 
-// change this to something only you know — anyone with this key can force-refresh everyone
 const ADMIN_KEY = "hooper-admin-2026";
+
+// spread across the map — server doesn't know building layout, so these sit
+// out toward the edges/corners where the procedural city is naturally sparser
+const SPAWN_POINTS = [
+  { x: 35, z: 0 }, { x: -35, z: 0 }, { x: 0, z: 35 }, { x: 0, z: -35 },
+  { x: 25, z: 25 }, { x: -25, z: 25 }, { x: 25, z: -25 }, { x: -25, z: -25 }
+];
+
+function pickSpawnPoint(room, excludeId) {
+  let best = SPAWN_POINTS[0];
+  let bestScore = -Infinity;
+  for (const sp of SPAWN_POINTS) {
+    let minDist = Infinity;
+    for (const [id, p] of room.players.entries()) {
+      if (id === excludeId) continue;
+      if (p.alive === false) continue;
+      const dx = sp.x - p.x, dz = sp.z - p.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < minDist) minDist = dist;
+    }
+    if (minDist === Infinity) minDist = 999; // nobody else alive — any point is fine
+    const score = minDist + Math.random() * 5; // slight randomness so it's not perfectly predictable
+    if (score > bestScore) { bestScore = score; best = sp; }
+  }
+  return best;
+}
 
 const httpServer = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://' + req.headers.host);
@@ -100,13 +125,17 @@ io.on('connection', (socket) => {
       existingPlayers.push({ id, ...state });
     }
 
+    const spawn = pickSpawnPoint(room, socket.id);
     room.players.set(socket.id, {
-      x: 0, y: 1.7, z: 0, yaw: 0, character, username,
+      x: spawn.x, y: 1.7, z: spawn.z, yaw: 0, character, username,
       alive: true, invulnerableUntil: Date.now() + SPAWN_PROTECTION_MS,
       kills: 0, deaths: 0
     });
 
-    callback({ success: true, roomId, playerCount: room.players.size, maxPlayers: room.maxPlayers, existingPlayers });
+    callback({
+      success: true, roomId, playerCount: room.players.size, maxPlayers: room.maxPlayers,
+      existingPlayers, spawnX: spawn.x, spawnZ: spawn.z
+    });
 
     socket.to(roomId).emit('playerJoined', { id: socket.id, character, username });
 
@@ -156,10 +185,11 @@ io.on('connection', (socket) => {
       if (!rooms[roomId]) return;
       const t = rooms[roomId].players.get(targetId);
       if (!t) return;
+      const respawnPoint = pickSpawnPoint(rooms[roomId], targetId);
       t.alive = true;
-      t.x = 0; t.y = 1.7; t.z = 0; t.yaw = 0;
+      t.x = respawnPoint.x; t.y = 1.7; t.z = respawnPoint.z; t.yaw = 0;
       t.invulnerableUntil = Date.now() + SPAWN_PROTECTION_MS;
-      io.to(roomId).emit('playerRespawned', { id: targetId, x: 0, y: 1.7, z: 0 });
+      io.to(roomId).emit('playerRespawned', { id: targetId, x: respawnPoint.x, z: respawnPoint.z });
     }, RESPAWN_DELAY_MS);
   });
 
