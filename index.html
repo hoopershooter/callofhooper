@@ -989,7 +989,7 @@ socket.on('playerRespawned', (data) => {
 const overlay = document.getElementById('overlay');
 let yaw = Math.PI, pitch = 0;
 const bgMusic = document.getElementById('bgMusic');
-const MUSIC_VOLUME = 0.4; // 0.0 (silent) to 1.0 (full volume) — adjust to taste
+let MUSIC_VOLUME = 0.4; // 0.0 (silent) to 1.0 (full volume) — adjustable via settings slider
 bgMusic.volume = MUSIC_VOLUME;
 let musicStarted = false;
 
@@ -1001,7 +1001,7 @@ function startMusicOnce() {
 
 const fartSound = document.getElementById('fartSound');
 const headshotSound = document.getElementById('headshotSound');
-const SFX_VOLUME = 1; // 0.0 to 1.0 — adjust to taste
+let SFX_VOLUME = 1; // 0.0 to 1.0 — adjustable via settings slider
 
 function playSfx(audioEl, volume) {
   const clone = audioEl.cloneNode(true); // clone so overlapping/rapid plays don't cut each other off
@@ -1019,15 +1019,96 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   }
 });
 
+let hasStartedGame = false;
+
 overlay.addEventListener('click', () => {
   renderer.domElement.requestPointerLock();
   startMusicOnce();
+  hasStartedGame = true;
 });
+
+const pauseMenu = document.getElementById('pauseMenu');
+const settingsMenu = document.getElementById('settingsMenu');
+const resumeButton = document.getElementById('resumeButton');
+const settingsButton = document.getElementById('settingsButton');
+const respawnButton = document.getElementById('respawnButton');
+const mainMenuButton = document.getElementById('mainMenuButton');
+const backToPauseButton = document.getElementById('backToPauseButton');
 
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === renderer.domElement;
-  overlay.classList.toggle('hidden', locked);
-  if (!locked) setScoped(false);
+  if (locked) {
+    overlay.classList.add('hidden');
+    pauseMenu.classList.remove('active');
+    settingsMenu.classList.remove('active');
+  } else {
+    setScoped(false);
+    if (hasStartedGame) {
+      pauseMenu.classList.add('active');
+    } else {
+      overlay.classList.remove('hidden');
+    }
+  }
+});
+
+resumeButton.addEventListener('click', () => {
+  renderer.domElement.requestPointerLock();
+});
+
+respawnButton.addEventListener('click', () => {
+  camera.position.set(0, getGroundHeight(0, 0) + EYE_HEIGHT, 0);
+  verticalVelocity = 0;
+  onGround = true;
+  isDead = false;
+  deathOverlay.classList.remove('active');
+  renderer.domElement.requestPointerLock();
+});
+
+settingsButton.addEventListener('click', () => {
+  pauseMenu.classList.remove('active');
+  settingsMenu.classList.add('active');
+});
+backToPauseButton.addEventListener('click', () => {
+  settingsMenu.classList.remove('active');
+  pauseMenu.classList.add('active');
+});
+
+mainMenuButton.addEventListener('click', () => {
+  socket.emit('leaveRoom');
+  currentRoomId = null;
+  hasStartedGame = false;
+  isDead = false;
+  deathOverlay.classList.remove('active');
+  pauseMenu.classList.remove('active');
+  settingsMenu.classList.remove('active');
+  gameOverlay.classList.add('hidden');
+  for (const id in otherPlayers) removePlayer(id);
+  titleScreen.classList.remove('hidden');
+});
+
+const sensSlider = document.getElementById('sensSlider');
+const sensValue = document.getElementById('sensValue');
+sensSlider.addEventListener('input', () => {
+  const val = Number(sensSlider.value);
+  sensValue.textContent = val;
+  DEFAULT_SENSITIVITY = val * 0.0001;
+});
+
+const musicSlider = document.getElementById('musicSlider');
+const musicValue = document.getElementById('musicValue');
+musicSlider.addEventListener('input', () => {
+  const val = Number(musicSlider.value);
+  musicValue.textContent = val;
+  MUSIC_VOLUME = val / 100;
+  bgMusic.volume = MUSIC_VOLUME;
+});
+
+const sfxSlider = document.getElementById('sfxSlider');
+const sfxValue = document.getElementById('sfxValue');
+sfxSlider.addEventListener('input', () => {
+  const val = Number(sfxSlider.value);
+  sfxValue.textContent = val;
+  SFX_VOLUME = val / 100;
 });
 
 const DEFAULT_FOV = 75;
@@ -1059,7 +1140,7 @@ document.addEventListener('mouseup', (e) => {
 
 document.addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== renderer.domElement) return;
-  const sens = isScoped ? SCOPED_SENSITIVITY : DEFAULT_SENSITIVITY;
+  const sens = isScoped ? DEFAULT_SENSITIVITY * 0.27 : DEFAULT_SENSITIVITY;
   yaw -= e.movementX * sens;
   pitch -= e.movementY * sens;
   pitch = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05, pitch));
