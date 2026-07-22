@@ -32,6 +32,19 @@
   #overlay .prompt { margin-top: 24px; font-size: 18px; color: #ffd75e; }
   #overlay.hidden { display: none; }
 
+  #pauseMenu, #settingsMenu {
+    position: fixed; inset: 0; z-index: 22; display: none;
+    background: rgba(20,15,10,0.92);
+    color: #fff; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  }
+  #pauseMenu.active, #settingsMenu.active { display: flex; }
+  #pauseMenu h2, #settingsMenu h2 { font-size: 30px; margin-bottom: 20px; }
+  #pauseMenu .menuButton { margin: 6px 0; width: 220px; }
+  #settingsMenu .settingRow { margin: 14px 0; width: 320px; max-width: 85vw; text-align: left; }
+  #settingsMenu label { display: block; margin-bottom: 6px; font-size: 14px; }
+  #settingsMenu input[type="range"] { width: 100%; }
+  #settingsMenu .menuButton { margin-top: 18px; }
+
   #hitmarker {
     position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
     font-size: 28px; color: #ffd75e; opacity: 0; pointer-events: none;
@@ -170,6 +183,31 @@
   <h1>💩 Call of hooper</h1>
   <p>WASD to move, Space to jump, mouse to look, click to shoot poop at the dummy targets.</p>
   <div class="prompt">Click to start</div>
+</div>
+
+<div id="pauseMenu">
+  <h2>Paused</h2>
+  <button class="menuButton" id="resumeButton">Resume</button>
+  <button class="menuButton" id="settingsButton">Settings</button>
+  <button class="menuButton" id="respawnButton">Respawn</button>
+  <button class="menuButton secondary" id="mainMenuButton">Main Menu</button>
+</div>
+
+<div id="settingsMenu">
+  <h2>Settings</h2>
+  <div class="settingRow">
+    <label>Mouse Sensitivity: <span id="sensValue">22</span></label>
+    <input type="range" id="sensSlider" min="1" max="50" value="22">
+  </div>
+  <div class="settingRow">
+    <label>Music Volume: <span id="musicValue">40</span></label>
+    <input type="range" id="musicSlider" min="0" max="100" value="40">
+  </div>
+  <div class="settingRow">
+    <label>Sound Effects Volume: <span id="sfxValue">100</span></label>
+    <input type="range" id="sfxSlider" min="0" max="100" value="100">
+  </div>
+  <button class="menuButton secondary" id="backToPauseButton">Back</button>
 </div>
 
 <div id="crosshair"></div>
@@ -994,8 +1032,7 @@ document.addEventListener('pointerlockchange', () => {
 
 const DEFAULT_FOV = 75;
 const SCOPED_FOV = 20;
-const DEFAULT_SENSITIVITY = 0.0022;
-const SCOPED_SENSITIVITY = 0.0006;
+let DEFAULT_SENSITIVITY = 0.0022; // adjustable via settings slider
 let isScoped = false;
 
 const scopeOverlay = document.getElementById('scopeOverlay');
