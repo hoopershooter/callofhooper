@@ -144,8 +144,9 @@
   #roomListEmpty { padding: 20px; opacity: 0.6; }
 
   #createRoomBar { display: flex; gap: 8px; margin-bottom: 14px; }
-  #createRoomBar input { padding: 10px 12px; border-radius: 6px; border: none; font-size: 15px; width: 220px; }
-
+#createRoomBar input { padding: 10px 12px; border-radius: 6px; border: none; font-size: 15px; width: 220px; }
+#createRoomBar select { padding: 10px 12px; border-radius: 6px; border: none; font-size: 15px; }
+  
 #connectionStatus { margin-top: 14px; font-size: 13px; opacity: 0.6; }
   #leaderboard {
     position: fixed; top: 16px; right: 16px;
@@ -203,8 +204,12 @@
   <div id="roomList">
     <div id="roomListEmpty">No servers yet — create one below.</div>
   </div>
-  <div id="createRoomBar">
+<div id="createRoomBar">
     <input type="text" id="createRoomName" placeholder="Server name" maxlength="30">
+    <select id="createRoomMap">
+      <option value="city">City</option>
+      <option value="grove">Warkworth Grove</option>
+    </select>
     <button class="menuButton" id="createRoomButton">Create</button>
   </div>
   <div style="display:flex; gap:10px;">
@@ -348,8 +353,8 @@ function renderRoomList(rooms) {
     row.innerHTML =
       '<span><span class="roomName"></span><span class="roomCount"></span></span>' +
       '<button' + (full ? ' disabled' : '') + '>' + (full ? 'Full' : 'Join') + '</button>';
-    row.querySelector('.roomName').textContent = room.name;
-    row.querySelector('.roomCount').textContent = ' (' + room.playerCount + '/' + room.maxPlayers + ')';
+   row.querySelector('.roomName').textContent = room.name;
+    row.querySelector('.roomCount').textContent = ' (' + room.playerCount + '/' + room.maxPlayers + ') — ' + room.mapName;
     if (!full) row.querySelector('button').addEventListener('click', () => joinRoom(room.id));
     roomListEl.appendChild(row);
   }
@@ -422,8 +427,9 @@ backToTitleButton.addEventListener('click', () => {
   titleScreen.classList.remove('hidden');
 });
 refreshRoomsButton.addEventListener('click', requestRoomList);
+const createRoomMap = document.getElementById('createRoomMap');
 createRoomButton.addEventListener('click', () => {
-  socket.emit('createRoom', createRoomName.value, (response) => {
+  socket.emit('createRoom', { name: createRoomName.value, mapId: createRoomMap.value }, (response) => {
     if (response.success) { createRoomName.value = ''; joinRoom(response.roomId); }
   });
 });
@@ -832,6 +838,38 @@ makeWall(0, WORLD_BOUND, WORLD_BOUND * 2, wallThickness, wallHeight);
 makeWall(-WORLD_BOUND, 0, wallThickness, WORLD_BOUND * 2, wallHeight);
 makeWall(WORLD_BOUND, 0, wallThickness, WORLD_BOUND * 2, wallHeight);
 
+// ---------- Warkworth Grove (small symmetric map, separate area of the world) ----------
+function generateWarkworthGrove() {
+  const GX = 400, GZ = 400;      // grove's world-space center, far from the city so they never overlap
+  const GROVE_BOUND = 25;
+  const gWallH = 8, gWallT = 2;
+
+  // perimeter fence
+  makeWall(GX, GZ - GROVE_BOUND, GROVE_BOUND * 2, gWallT, gWallH);
+  makeWall(GX, GZ + GROVE_BOUND, GROVE_BOUND * 2, gWallT, gWallH);
+  makeWall(GX - GROVE_BOUND, GZ, gWallT, GROVE_BOUND * 2, gWallH);
+  makeWall(GX + GROVE_BOUND, GZ, gWallT, GROVE_BOUND * 2, gWallH);
+
+  // two mirrored houses facing each other across the yard
+  makeBuilding(GX, GZ + 18, 16, 8, 6, 'flat');
+  makeBuilding(GX, GZ - 18, 16, 8, 6, 'flat');
+
+  // low side fences marking the flanking lanes
+  makeWall(GX - 16, GZ, gWallT, 22, 2.2);
+  makeWall(GX + 16, GZ, gWallT, 22, 2.2);
+
+  // central cover piece
+  const pool = new THREE.Mesh(
+    new THREE.CylinderGeometry(4, 4.3, 1, 16),
+    new THREE.MeshStandardMaterial({ color: 0x4a90c4, flatShading: true })
+  );
+  pool.position.set(GX, 0.5, GZ);
+  pool.castShadow = pool.receiveShadow = true;
+  scene.add(pool);
+  collisionMeshes.push(pool);
+  colliders.push({ x: GX, z: GZ, halfW: 4, halfD: 4 });
+}
+generateWarkworthGrove();
 // ---------- Procedural elevated platforms (ramped on all sides, flat-topped) ----------
 const PLATFORM_COUNT = 40;
 const PLATFORM_MIN_SIZE = 20;       // base footprint size range
