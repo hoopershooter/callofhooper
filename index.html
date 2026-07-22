@@ -1098,10 +1098,15 @@ async function ensureMicAccess() {
 function createVoicePeer(remoteId, isInitiator) {
   if (voicePeers[remoteId]) return voicePeers[remoteId];
 
+  console.log('[voice] creating peer connection to', remoteId, 'as', isInitiator ? 'initiator' : 'receiver');
+
   const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
   if (localMicStream) {
     localMicStream.getTracks().forEach(track => pc.addTrack(track, localMicStream));
+    console.log('[voice] added local mic track to connection with', remoteId);
+  } else {
+    console.log('[voice] WARNING: no local mic stream available when connecting to', remoteId);
   }
 
   const audioEl = document.createElement('audio');
@@ -1109,7 +1114,9 @@ function createVoicePeer(remoteId, isInitiator) {
   document.body.appendChild(audioEl);
 
   pc.ontrack = (event) => {
+    console.log('[voice] received remote audio track from', remoteId);
     audioEl.srcObject = event.streams[0];
+    audioEl.play().catch(err => console.error('[voice] audio playback blocked:', err));
   };
 
   pc.onicecandidate = (event) => {
@@ -1118,8 +1125,15 @@ function createVoicePeer(remoteId, isInitiator) {
     }
   };
 
-  voicePeers[remoteId] = { pc, audioEl };
+  pc.oniceconnectionstatechange = () => {
+    console.log('[voice] ICE connection state with', remoteId, ':', pc.iceConnectionState);
+  };
 
+  pc.onconnectionstatechange = () => {
+    console.log('[voice] connection state with', remoteId, ':', pc.connectionState);
+  };
+
+  voicePeers[remoteId] = { pc, audioEl };
   if (isInitiator) {
     pc.createOffer()
       .then(offer => pc.setLocalDescription(offer))
