@@ -885,7 +885,7 @@ function generateWarkworthGrove() {
     collisionMeshes.push(body, roofCap);
     colliders.push({ x, z, halfW: rotationY === 0 ? 1.6 : 5, halfD: rotationY === 0 ? 5 : 1.6 });
   }
-makeTrainCar(GX, GZ, 0);
+makeTrainCar(GX + 2, GZ - 4, 0);
 makeTrainCar(GX + 4, GZ + 2, Math.PI / 2);
 makeTrainCar(GX - 6, GZ - 3, Math.PI / 2);
 
