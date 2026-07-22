@@ -661,7 +661,7 @@ function setSunSize(size) {
 }
 window.setSunSize = setSunSize; // lets you resize live from the browser console, e.g. setSunSize(80)
 
-const grassTexture = new THREE.TextureLoader().load("grass.png", () => generatePlatforms(), undefined,
+const grassTexture = new THREE.TextureLoader().load("grass.png", () => {generatePlatforms(); generateCity(); generateWarkworthGrove(); }, undefined,
   () => console.error('FAILED TO LOAD: grass.png — check the file is in the same folder as this HTML file'));
   grassTexture.wrapS = THREE.RepeatWrapping;
 grassTexture.wrapT = THREE.RepeatWrapping;
@@ -1084,6 +1084,9 @@ while (platforms.length < PLATFORM_COUNT && platformAttempts < PLATFORM_COUNT * 
 console.log('platforms generated:', platforms.length, 'out of', PLATFORM_COUNT, 'after', platformAttempts, 'attempts');
 }
 
+generateCity();
+generateWarkworthGrove();
+  
 function getGroundHeight(x, z) {
   let best = 0;
   for (const p of platforms) {
