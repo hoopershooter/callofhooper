@@ -138,16 +138,16 @@
 
 #connectionStatus { margin-top: 14px; font-size: 13px; opacity: 0.6; }
   #leaderboard {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    z-index: 18; display: none;
-    background: rgba(20,15,10,0.92); color: #fff; border-radius: 10px;
-    padding: 18px 22px; min-width: 300px;
+    position: fixed; top: 16px; right: 16px;
+    z-index: 18;
+    background: rgba(20,15,10,0.75); color: #fff; border-radius: 8px;
+    padding: 10px 14px; min-width: 200px; max-width: 260px;
+    pointer-events: none;
   }
-  #leaderboard.active { display: block; }
-  #leaderboard h3 { margin: 0 0 12px 0; font-size: 20px; text-align: center; }
-  #leaderboard table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  #leaderboard th { text-align: left; opacity: 0.6; font-weight: normal; padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.15); }
-  #leaderboard td { padding: 6px 8px; }
+  #leaderboard h3 { margin: 0 0 8px 0; font-size: 14px; text-align: left; opacity: 0.8; font-weight: normal; text-transform: uppercase; letter-spacing: 0.5px; }
+  #leaderboard table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  #leaderboard th { text-align: left; opacity: 0.5; font-weight: normal; padding: 2px 6px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+  #leaderboard td { padding: 3px 6px; }
   #leaderboard tr.selfRow { color: #ffd75e; font-weight: bold; }
 
   #characterSelectScreen h2 { font-size: 28px; margin-bottom: 20px; }
@@ -244,7 +244,7 @@
 </div>
 <div id="hud">
   <div class="score">Hits: <span id="score">0</span></div>
-  <div>WASD move · Space jump · Mouse look · Click shoot · Esc release mouse · Tab leaderboard</div>
+  <div>WASD move · Space jump · Mouse look · Click shoot · Esc release mouse </div>
 </div>
 
 <div id="leaderboard">
@@ -1027,15 +1027,7 @@ socket.on('leaderboardUpdate', (list) => {
   }
 });
 
-document.addEventListener('keydown', (e) => {
-  if (e.code === 'Tab' && currentRoomId) {
-    e.preventDefault(); // stop Tab from shifting browser focus away from the game
-    leaderboardEl.classList.add('active');
-  }
-});
-document.addEventListener('keyup', (e) => {
-  if (e.code === 'Tab') leaderboardEl.classList.remove('active');
-});
+
 
 socket.on('playerKilled', (data) => {
   if (data.targetId === socket.id) {
