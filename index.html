@@ -315,13 +315,14 @@ function renderRoomList(rooms) {
 }
 
 function joinRoom(roomId) {
-  socket.emit('joinRoom', { roomId, character: selectedCharacter }, (response) => {
+  socket.emit('joinRoom', { roomId, character: selectedCharacter, username: getLocalUsername() }, (response) => {
     if (response.success) {
       currentRoomId = response.roomId;
       serverListScreen.classList.add('hidden');
       gameOverlay.classList.remove('hidden');
-      if (response.existingPlayers) {
+     if (response.existingPlayers) {
         for (const p of response.existingPlayers) {
+          playerUsernames[p.id] = p.username || 'Player';
           spawnOrUpdatePlayer(p.id, p.x, p.y, p.z, p.yaw, p.character);
         }
       }
@@ -335,8 +336,14 @@ function joinRoom(roomId) {
 const characterSelectScreen = document.getElementById('characterSelectScreen');
 const characterGrid = document.getElementById('characterGrid');
 const backToTitleFromCharacterButton = document.getElementById('backToTitleFromCharacterButton');
+const usernameInput = document.getElementById('usernameInput');
 const CHARACTER_COUNT = 5;
 let selectedCharacter = 1;
+
+function getLocalUsername() {
+  const typed = usernameInput.value.trim();
+  return typed.length > 0 ? typed.slice(0, 16) : ('Player' + Math.floor(Math.random() * 9000 + 1000));
+}
 
 for (let i = 1; i <= CHARACTER_COUNT; i++) {
   const card = document.createElement('div');
@@ -945,7 +952,12 @@ function removePlayer(id) {
   }
 }
 
-socket.on('playerJoined', (data) => spawnOrUpdatePlayer(data.id, 0, EYE_HEIGHT, 0, 0, data.character));
+const playerUsernames = {}; // socketId -> username, kept separately so death messages work even after a model is removed
+
+socket.on('playerJoined', (data) => {
+  playerUsernames[data.id] = data.username || 'Player';
+  spawnOrUpdatePlayer(data.id, 0, EYE_HEIGHT, 0, 0, data.character);
+});
 socket.on('playerLeft', (data) => removePlayer(data.id));
 socket.on('playerUpdate', (data) => spawnOrUpdatePlayer(data.id, data.x, data.y, data.z, data.yaw, data.character));
 
@@ -969,9 +981,12 @@ function sendLocalPlayerState(now) {
 const deathOverlay = document.getElementById('deathOverlay');
 let isDead = false;
 
+const killedByText = document.getElementById('killedByText');
+
 socket.on('playerKilled', (data) => {
   if (data.targetId === socket.id) {
     isDead = true;
+    killedByText.textContent = 'Killed by ' + (data.killerUsername || 'Unknown');
     deathOverlay.classList.add('active');
   } else if (otherPlayers[data.targetId]) {
     otherPlayers[data.targetId].group.visible = false;
