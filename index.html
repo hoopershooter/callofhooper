@@ -343,7 +343,13 @@ function joinRoom(roomId) {
       currentRoomId = response.roomId;
       serverListScreen.classList.add('hidden');
       gameOverlay.classList.remove('hidden');
-     if (response.existingPlayers) {
+
+      const spawnY = getGroundHeight(response.spawnX, response.spawnZ) + EYE_HEIGHT;
+      camera.position.set(response.spawnX, spawnY, response.spawnZ);
+      verticalVelocity = 0;
+      onGround = true;
+
+      if (response.existingPlayers) {
         for (const p of response.existingPlayers) {
           playerUsernames[p.id] = p.username || 'Player';
           spawnOrUpdatePlayer(p.id, p.x, p.y, p.z, p.yaw, p.character);
@@ -355,7 +361,6 @@ function joinRoom(roomId) {
     }
   });
 }
-
 const characterSelectScreen = document.getElementById('characterSelectScreen');
 const characterGrid = document.getElementById('characterGrid');
 const backToTitleFromCharacterButton = document.getElementById('backToTitleFromCharacterButton');
@@ -1043,16 +1048,17 @@ socket.on('playerKilled', (data) => {
 });
 
 socket.on('playerRespawned', (data) => {
+  const spawnY = getGroundHeight(data.x, data.z) + EYE_HEIGHT;
   if (data.id === socket.id) {
     isDead = false;
     deathOverlay.classList.remove('active');
-    camera.position.set(data.x, data.y, data.z);
+    camera.position.set(data.x, spawnY, data.z);
     verticalVelocity = 0;
     onGround = true;
   } else if (otherPlayers[data.id]) {
     otherPlayers[data.id].group.visible = true;
-    otherPlayers[data.id].targetPos.set(data.x, data.y, data.z);
-    otherPlayers[data.id].group.position.set(data.x, data.y, data.z);
+    otherPlayers[data.id].targetPos.set(data.x, spawnY, data.z);
+    otherPlayers[data.id].group.position.set(data.x, spawnY, data.z);
   }
 });
   
