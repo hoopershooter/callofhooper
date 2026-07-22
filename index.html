@@ -100,9 +100,19 @@
 
   #titleScreen h1 { font-size: 46px; margin-bottom: 6px; }
   #titleScreen p { opacity: 0.75; margin-bottom: 20px; }
-  #usernameInput {
-    padding: 10px 14px; border-radius: 6px; border: none; font-size: 15px;
-    width: 220px; text-align: center; margin-bottom: 18px;
+#announcementText {
+    position: absolute;
+    top: 190px; left: 50%;
+    transform: translateX(calc(-50% + 130px)) rotate(-18deg);
+    transform-origin: center;
+    color: #ffd75e; font-weight: bold; font-style: italic; font-size: 18px;
+    text-shadow: 0 2px 3px rgba(0,0,0,0.6);
+    pointer-events: none; white-space: nowrap;
+    animation: announcementBounce 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes announcementBounce {
+    from { transform: translateX(calc(-50% + 130px)) rotate(-18deg) scale(1); }
+    to   { transform: translateX(calc(-50% + 130px)) rotate(-18deg) scale(1.15); }
   }
   .menuButton {
     background: #ffd75e; color: #2b1f14; border: none; border-radius: 6px;
@@ -177,6 +187,7 @@
 <div id="titleScreen">
   <h1>💩 Call of Hooper</h1>
   <p>A Noah Hooper multiplayer shooter</p>
+  <span id="announcementText">Now with voice chat!</span>
   <input type="text" id="usernameInput" placeholder="Enter a username" maxlength="16">
   <button class="menuButton" id="playButton">Play</button>
 </div>
