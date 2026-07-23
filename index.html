@@ -521,7 +521,7 @@ const characterTextures = [
   new THREE.TextureLoader().load("character5.jpeg"),
 ];
 const dummyTexture = new THREE.TextureLoader().load("dummy.png");
-const towerTexture = new THREE.TextureLoader().load("tower2.png", () => generateCity());
+const towerTexture = new THREE.TextureLoader().load("tower2.png");
 
 towerTexture.wrapS = THREE.RepeatWrapping;
 towerTexture.wrapT = THREE.RepeatWrapping;
@@ -843,9 +843,24 @@ makeWall(WORLD_BOUND, 0, wallThickness, WORLD_BOUND * 2, wallHeight);
 
 // ---------- Warkworth Grove (small symmetric map, separate area of the world) ----------
 function generateWarkworthGrove() {
-  const GX = 400, GZ = 400;      // grove's world-space center, far from the city so they never overlap
+const GX = 400, GZ = 400;      // grove's world-space center, far from the city so they never overlap
   const GROVE_BOUND = 30;
   const gWallH = 8, gWallT = 2;
+
+  // dedicated grass floor for the grove — the main ground plane doesn't reach out here
+  const groveGroundSize = (GROVE_BOUND + 5) * 2;
+  const groveGroundTex = grassTexture.clone();
+  groveGroundTex.wrapS = groveGroundTex.wrapT = THREE.RepeatWrapping;
+  groveGroundTex.repeat.set(groveGroundSize / 3, groveGroundSize / 3);
+  groveGroundTex.needsUpdate = true;
+  const groveGround = new THREE.Mesh(
+    new THREE.PlaneGeometry(groveGroundSize, groveGroundSize),
+    new THREE.MeshStandardMaterial({ map: groveGroundTex })
+  );
+  groveGround.rotation.x = -Math.PI / 2;
+  groveGround.position.set(GX, 0, GZ);
+  groveGround.receiveShadow = true;
+  scene.add(groveGround);
 
   // perimeter fence
   makeWall(GX, GZ - GROVE_BOUND, GROVE_BOUND * 2, gWallT, gWallH);
@@ -885,7 +900,7 @@ function generateWarkworthGrove() {
     collisionMeshes.push(body, roofCap);
     colliders.push({ x, z, halfW: rotationY === 0 ? 1.6 : 5, halfD: rotationY === 0 ? 5 : 1.6 });
   }
-makeTrainCar(GX + 2, GZ - 4,);
+makeTrainCar(GX + 2, GZ - 4, 0);
 makeTrainCar(GX + 6, GZ + 2, Math.PI / 2);
 makeTrainCar(GX - 8, GZ - 3, Math.PI / 2);
 
@@ -998,12 +1013,41 @@ function makeHouse(cx, houseCenterZ, sign) {
   scene.add(roof);
   collisionMeshes.push(roof);
 
-  const porch = new THREE.Mesh(
+const porch = new THREE.Mesh(
     new THREE.BoxGeometry(4 * SCALE, 0.2, 2 * SCALE),
     new THREE.MeshStandardMaterial({ color: 0x6b4a3a, flatShading: true })
   );
   porch.position.set(cx, FLOOR_H - 0.1, wz(6));
   scene.add(porch);
+
+  // front door — modeled swung fully open against the interior wall, so it's visible but never blocks the doorway
+  const door = new THREE.Mesh(
+    new THREE.BoxGeometry(0.1, FLOOR_H * 0.85, doorHalf * 1.6),
+    new THREE.MeshStandardMaterial({ color: 0x4a2f1a, flatShading: true })
+  );
+  door.position.set(cx - HW + 0.15, (FLOOR_H * 0.85) / 2, entranceZ);
+  door.castShadow = true;
+  scene.add(door);
+
+  // furniture helper — small pieces that also collide, like real obstacles
+  function furniturePiece(x, y, z, w, h, d, color) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, flatShading: true }));
+    mesh.position.set(x, y + h / 2, z);
+    mesh.castShadow = mesh.receiveShadow = true;
+    scene.add(mesh);
+    collisionMeshes.push(mesh);
+    colliders.push({ x, z, halfW: w / 2, halfD: d / 2 });
+  }
+
+  // living room: couch + small table
+  furniturePiece(cx - 9, 0, houseCenterZ, 3, 1, 1.2, 0x445566);
+  furniturePiece(cx - 2, 0, houseCenterZ, 1.5, 0.9, 1.5, 0x8a6b4f);
+
+  // back room: bed-sized piece, doubling as a couch/lounge downstairs
+  furniturePiece(cx - 6, 0, wz(-4), 2.2, 1, 3.2, 0x774455);
+
+  // upstairs bedroom: bed, placed clear of the stairwell opening
+  furniturePiece(cx - 6, FLOOR_H, wz(-4), 2.2, 1, 3.2, 0x774455);
 }
 // ---------- Procedural elevated platforms (ramped on all sides, flat-topped) ----------
 const PLATFORM_COUNT = 40;
@@ -1084,9 +1128,6 @@ while (platforms.length < PLATFORM_COUNT && platformAttempts < PLATFORM_COUNT * 
 }
 console.log('platforms generated:', platforms.length, 'out of', PLATFORM_COUNT, 'after', platformAttempts, 'attempts');
 }
-
-generateCity();
-generateWarkworthGrove();
   
 function getGroundHeight(x, z) {
   let best = 0;
