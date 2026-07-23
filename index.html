@@ -1122,10 +1122,20 @@ function makeHouseWing(cx, houseCenterZ, sign, side) {
   const wz = (localZ) => houseCenterZ + localZ * sign * SCALE;
   const wallColor = 0xc9b896; // slightly different shade so wings read as distinct add-ons
 
-  // side walls
-  houseWall(wingCenterX - WING_HALF_W, 0, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
-  houseWall(wingCenterX + WING_HALF_W, 0, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
-  // (the wing's inner side is sealed by the main house's own wall — no extra wall needed there,
+  // outer side wall — solid, full depth
+  const innerX = wingCenterX - side * WING_HALF_W; // wall shared with the main house
+  const outerX = wingCenterX + side * WING_HALF_W; // wing's outward-facing wall
+  houseWall(outerX, 0, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
+
+  // inner side wall — cut a doorway matching the gap already in the main house's wall,
+  // so you can actually walk between the wing and the main house
+  const wingInnerDoorHalf = 1.3 * SCALE;   // must match makeHouse's wingDoorHalf
+  const wingInnerDoorHeaderH = 0.5 * SCALE; // must match makeHouse's wingDoorHeaderH
+  const innerSegLen = 5 * SCALE - wingInnerDoorHalf;
+  const innerSegOffset = (5 * SCALE + wingInnerDoorHalf) / 2;
+  houseWall(innerX, 0, houseCenterZ - innerSegOffset, T, FLOOR_H, innerSegLen, wallColor);
+  houseWall(innerX, 0, houseCenterZ + innerSegOffset, T, FLOOR_H, innerSegLen, wallColor);
+  houseWall(innerX, FLOOR_H - wingInnerDoorHeaderH, houseCenterZ, T, wingInnerDoorHeaderH, wingInnerDoorHalf * 2, wallColor, true);
   //  which is also why the wing has no interior connection to the main house)
 
   // entrance, yard-facing, own separate door-shaped hole
