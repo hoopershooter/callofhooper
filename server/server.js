@@ -13,8 +13,10 @@ const SPAWN_POINTS = {
     { x: -28.5, z: 0 }, { x: -27.2, z: -27.2 }, { x: 0, z: -35.5 }, { x: 25.1, z: -25.1 }
   ],
 grove: [
-    { x: 388, z: 412 }, { x: 400, z: 414 }, { x: 412, z: 412 },
-    { x: 388, z: 388 }, { x: 400, z: 386 }, { x: 412, z: 388 }
+    // House 1 (z = 378): middle, then west wing, then east wing
+    { x: 400,   z: 378 }, { x: 378.4, z: 378 }, { x: 421.6, z: 378 },
+    // House 2 (z = 422): middle, then west wing, then east wing
+    { x: 400,   z: 422 }, { x: 378.4, z: 422 }, { x: 421.6, z: 422 }
   ]
 };
 const MAP_NAMES = { city: 'City', grove: 'Warkworth Grove' };
