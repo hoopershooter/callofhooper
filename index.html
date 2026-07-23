@@ -965,8 +965,19 @@ function makeHouse(cx, houseCenterZ, sign) {
   const wz = (localZ) => houseCenterZ + localZ * sign * SCALE;
   const wallColor = 0xd8c9a8;
 
-  houseWall(cx - HW, 0, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
-  houseWall(cx + HW, 0, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
+const wingDoorHalf = 1.3 * SCALE; // matches the wing's own entrance width
+  const sideWallHalfDepth = 5 * SCALE; // half of the original 10*SCALE wall depth
+  const segLen = sideWallHalfDepth - wingDoorHalf;
+  const segOffset = (sideWallHalfDepth + wingDoorHalf) / 2;
+  const wingDoorHeaderH = 0.5 * SCALE;
+
+  houseWall(cx - HW, 0, houseCenterZ - segOffset, T, FLOOR_H, segLen, wallColor);
+  houseWall(cx - HW, 0, houseCenterZ + segOffset, T, FLOOR_H, segLen, wallColor);
+  houseWall(cx - HW, FLOOR_H - wingDoorHeaderH, houseCenterZ, T, wingDoorHeaderH, wingDoorHalf * 2, wallColor, true);
+
+  houseWall(cx + HW, 0, houseCenterZ - segOffset, T, FLOOR_H, segLen, wallColor);
+  houseWall(cx + HW, 0, houseCenterZ + segOffset, T, FLOOR_H, segLen, wallColor);
+  houseWall(cx + HW, FLOOR_H - wingDoorHeaderH, houseCenterZ, T, wingDoorHeaderH, wingDoorHalf * 2, wallColor, true);
 
 const doorHalf = 1.5 * SCALE;
   const entranceZ = wz(5);
