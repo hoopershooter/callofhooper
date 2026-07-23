@@ -916,8 +916,10 @@ const GX = 400, GZ = 400;      // grove's world-space center, far from the city 
     collisionMeshes.push(body, roofCap);
     colliders.push({ x, z, halfW: rotationY === 0 ? 1.6 : 5, halfD: rotationY === 0 ? 5 : 1.6 });
   }
-makeTrainCar(GX + 6, GZ + 2, Math.PI / 2);
+makeTrainCar(GX + 8, GZ + 2, Math.PI / 2);
 makeTrainCar(GX - 8, GZ - 3, Math.PI / 2);
+makeTrainCar(GX + 18, GZ + 2, Math.PI / 2);
+makeTrainCar(GX - 18, GZ - 3, Math.PI / 2);
 
   // low side fences marking the flanking lanes
   makeWall(GX - 16, GZ, gWallT, 22, 2.2);
