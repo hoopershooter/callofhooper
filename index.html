@@ -59,6 +59,17 @@
   #deathOverlay.active { display: flex; }
   #deathOverlay h2 { font-size: 36px; text-shadow: 0 2px 6px rgba(0,0,0,0.7); }
   #deathOverlay p { font-size: 18px; opacity: 0.9; margin-top: 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.7); }
+  #smiteFlash {
+    position: fixed; inset: 0; z-index: 26; pointer-events: none;
+    background: #fff9c4; opacity: 0;
+  }
+  #smiteFlash.active { animation: smiteFlashAnim 0.4s ease-out; }
+  @keyframes smiteFlashAnim {
+    0% { opacity: 0; }
+    8% { opacity: 1; background: #ffffff; }
+    25% { opacity: 0.85; background: #fff59d; }
+    100% { opacity: 0; }
+  }
   
   #scopeOverlay {
     position: fixed; inset: 0; z-index: 12; display: none;
@@ -252,6 +263,7 @@
 
 <div id="crosshair"></div>
 <div id="hitmarker">HIT!</div>
+<div id="smiteFlash"></div>
 <div id="deathOverlay">
   <h2>You were killed</h2>
   <p id="killedByText"></p>
@@ -1287,13 +1299,55 @@ socket.on('leaderboardUpdate', (list) => {
 
 
 
+function triggerLightningBolt(x, z, groundY) {
+  const group = new THREE.Group();
+  const boltMat = new THREE.MeshBasicMaterial({ color: 0xfff59d, transparent: true, opacity: 1 });
+  const topY = groundY + 60;
+  let curX = x, curZ = z, curY = topY;
+  const segments = 8;
+  for (let i = 0; i < segments; i++) {
+    const nextY = topY - ((i + 1) / segments) * (topY - groundY);
+    const nextX = x + (Math.random() - 0.5) * 1.5;
+    const nextZ = z + (Math.random() - 0.5) * 1.5;
+    const dx = nextX - curX, dy = nextY - curY, dz = nextZ - curZ;
+    const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, len, 6), boltMat);
+    seg.position.set((curX + nextX) / 2, (curY + nextY) / 2, (curZ + nextZ) / 2);
+    seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(dx, dy, dz).normalize());
+    group.add(seg);
+    curX = nextX; curY = nextY; curZ = nextZ;
+  }
+
+  const flashLight = new THREE.PointLight(0xfff59d, 6, 30);
+  flashLight.position.set(x, groundY + 3, z);
+  scene.add(flashLight);
+
+  scene.add(group);
+
+  const smiteFlashEl = document.getElementById('smiteFlash');
+  smiteFlashEl.classList.remove('active');
+  void smiteFlashEl.offsetWidth; // restart animation if triggered again quickly
+  smiteFlashEl.classList.add('active');
+
+  setTimeout(() => {
+    scene.remove(group);
+    scene.remove(flashLight);
+  }, 350);
+}
+
 socket.on('playerKilled', (data) => {
   if (data.targetId === socket.id) {
     isDead = true;
-    killedByText.textContent = 'Killed by ' + (data.killerUsername || 'Unknown');
+    killedByText.textContent = data.smite ? 'Smited by the heavens ⚡' : ('Killed by ' + (data.killerUsername || 'Unknown'));
     deathOverlay.classList.add('active');
+    if (data.smite) {
+      triggerLightningBolt(camera.position.x, camera.position.z, camera.position.y - EYE_HEIGHT);
+    }
   } else if (otherPlayers[data.targetId]) {
     otherPlayers[data.targetId].group.visible = false;
+    if (data.smite) {
+      triggerLightningBolt(otherPlayers[data.targetId].group.position.x, otherPlayers[data.targetId].group.position.z, otherPlayers[data.targetId].group.position.y - EYE_HEIGHT);
+    }
   }
 });
 
@@ -1497,14 +1551,11 @@ resumeButton.addEventListener('click', () => {
 });
 
 respawnButton.addEventListener('click', () => {
-  camera.position.set(0, getGroundHeight(0, 0) + EYE_HEIGHT, 0);
-  verticalVelocity = 0;
-  onGround = true;
-  isDead = false;
-  deathOverlay.classList.remove('active');
+  if (isDead) return; // already mid-death, ignore extra clicks
+  pauseMenu.classList.remove('active');
   renderer.domElement.requestPointerLock();
+  socket.emit('selfSmite');
 });
-
 settingsButton.addEventListener('click', () => {
   pauseMenu.classList.remove('active');
   settingsMenu.classList.add('active');
