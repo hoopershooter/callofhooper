@@ -938,16 +938,18 @@ makeTrainCar(GX - 22, GZ - 3, Math.PI / 2);
   collisionMeshes.push(pool);
   colliders.push({ x: GX, z: GZ, halfW: 4, halfD: 4 });
 }
-// ---------- House-building helpers (walkable multi-room, two-story houses) ----------
+  
 function houseWall(x, y, z, w, h, d, color, skipPlayerCollision) {
   const mat = new THREE.MeshStandardMaterial({ color: color || 0xd8c9a8, flatShading: true });
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   mesh.position.set(x, y + h / 2, z);
   mesh.castShadow = mesh.receiveShadow = true;
   scene.add(mesh);
-  collisionMeshes.push(mesh); // still blocks bullets regardless
+  collisionMeshes.push(mesh);
   if (!skipPlayerCollision) {
-    colliders.push({ x, z, halfW: w / 2, halfD: d / 2 });
+    // yMin/yMax = the wall's actual vertical extent — collision only applies within that range,
+    // instead of blocking every height like an infinitely tall pillar
+    colliders.push({ x, z, halfW: w / 2, halfD: d / 2, yMin: y, yMax: y + h });
   }
   return mesh;
 }
@@ -1854,11 +1856,17 @@ function updateMovement(dt) {
   const currentSpeed = isScoped ? SCOPED_MOVE_SPEED : MOVE_SPEED;
   if (move.lengthSq() > 0) move.normalize().multiplyScalar(currentSpeed * dt);
 
-  let nx = camera.position.x + move.x;
+let nx = camera.position.x + move.x;
   let nz = camera.position.z + move.z;
+
+  const PLAYER_HEIGHT = 1.8;
+  const feetYForCollision = camera.position.y - EYE_HEIGHT;
 
   // proper box collision — find closest point on each box to the player, push out if too close
   for (const c of colliders) {
+    if (c.yMin !== undefined && (feetYForCollision + PLAYER_HEIGHT < c.yMin || feetYForCollision > c.yMax)) {
+      continue; // player's current height doesn't overlap this collider's vertical range at all
+    }
     const closestX = Math.max(c.x - c.halfW, Math.min(nx, c.x + c.halfW));
     const closestZ = Math.max(c.z - c.halfD, Math.min(nz, c.z + c.halfD));
     const dx = nx - closestX;
