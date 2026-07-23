@@ -278,7 +278,7 @@
 </div>
 <div id="hud">
   <div class="score">Hits: <span id="score">0</span></div>
-  <div>WASD move · Space jump · Mouse look · Click shoot · Esc release mouse · Hold V to talk</div>
+<div>WASD move · Space jump · Mouse look · Click shoot · Esc release mouse · Hold V to talk · F to fart</div>
 </div>
 <div id="micStatus">🎙️ Hold V to talk</div>
 
@@ -1297,15 +1297,15 @@ socket.on('leaderboardUpdate', (list) => {
   }
 });
 
-function triggerBloodMist(x, y, z) {
+function triggerBloodMist(x, y, z, color) {
   const group = new THREE.Group();
   const PARTICLE_COUNT = 18;
   const particles = [];
+  const mistColor = color !== undefined ? color : 0x8a0f0f;
 
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const size = 0.3 + Math.random() * 0.6;
-    const mat = new THREE.MeshBasicMaterial({ color: 0x8a0f0f, transparent: true, opacity: 0.75 });
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 6, 6), mat);
+    const mat = new THREE.MeshBasicMaterial({ color: mistColor, transparent: true, opacity: 0.75 });
     mesh.position.set(x, y, z);
     const dir = new THREE.Vector3((Math.random() - 0.5), Math.random() * 0.6 + 0.2, (Math.random() - 0.5)).normalize();
     const speed = 1.5 + Math.random() * 2.5;
@@ -1550,6 +1550,19 @@ document.addEventListener('keydown', (e) => {
     micStatusEl.textContent = '🎙️ Talking...';
   }
 });
+let lastFartTime = 0;
+const FART_COOLDOWN = 1000; // ms between farts
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyF' && currentRoomId && !isDead) {
+    const now = performance.now();
+    if (now - lastFartTime < FART_COOLDOWN) return;
+    lastFartTime = now;
+    playSfx(fartSound, SFX_VOLUME);
+    triggerBloodMist(camera.position.x, camera.position.y - 0.3, camera.position.z, 0x6b4a1f);
+  }
+});
+
 document.addEventListener('keyup', (e) => {
   if (e.code === 'KeyV' && localMicStream) {
     localMicStream.getAudioTracks().forEach(track => track.enabled = false);
