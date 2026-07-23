@@ -1053,8 +1053,10 @@ const STAIR_HALF_W = 1.25 * SCALE;
     flatFloors.push({ xMin: STAIR_XMIN, xMax: STAIR_XMAX, zMin: stairZHi, zMax: fullZHi, y: FLOOR_H });
   }
   
-  houseWall(cx - HW, FLOOR_H, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
-  houseWall(cx + HW, FLOOR_H, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
+  houseWall(cx - HW, FLOOR_H, houseCenterZ - segOffset, T, FLOOR_H, segLen, wallColor);
+  houseWall(cx - HW, FLOOR_H, houseCenterZ + segOffset, T, FLOOR_H, segLen, wallColor);
+  houseWall(cx + HW, FLOOR_H, houseCenterZ - segOffset, T, FLOOR_H, segLen, wallColor);
+  houseWall(cx + HW, FLOOR_H, houseCenterZ + segOffset, T, FLOOR_H, segLen, wallColor);
   houseWall(cx - (HW + doorHalf) / 2, FLOOR_H, entranceZ, HW - doorHalf, FLOOR_H, T, wallColor);
   houseWall(cx + (HW + doorHalf) / 2, FLOOR_H, entranceZ, HW - doorHalf, FLOOR_H, T, wallColor);
   houseWall(cx - (HW + doorHalf) / 2, FLOOR_H, backZ, HW - doorHalf, FLOOR_H, T, wallColor);
