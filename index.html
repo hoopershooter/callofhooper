@@ -1129,7 +1129,7 @@ while (platforms.length < PLATFORM_COUNT && platformAttempts < PLATFORM_COUNT * 
 console.log('platforms generated:', platforms.length, 'out of', PLATFORM_COUNT, 'after', platformAttempts, 'attempts');
 }
   
-function getGroundHeight(x, z) {
+function getGroundHeight(x, z, currentFeetY = Infinity) {
   let best = 0;
   for (const p of platforms) {
     const dx = x - p.x, dz = z - p.z;
@@ -1156,9 +1156,12 @@ function getGroundHeight(x, z) {
     best = Math.max(best, height);
   }
 
+const FLOOR_REACH_THRESHOLD = 1.0; // an indoor floor only counts if you're already roughly at that height (i.e. arrived via the stairs)
   for (const f of flatFloors) {
     if (x >= f.xMin && x <= f.xMax && z >= f.zMin && z <= f.zMax) {
-      best = Math.max(best, f.y);
+      if (currentFeetY >= f.y - FLOOR_REACH_THRESHOLD) {
+        best = Math.max(best, f.y);
+      }
     }
   }
 
@@ -1645,10 +1648,11 @@ function updateMovement(dt) {
   }
 
 
-  camera.position.x = nx;
+camera.position.x = nx;
   camera.position.z = nz;
 
-  const floorY = getGroundHeight(nx, nz) + EYE_HEIGHT;
+  const feetY = camera.position.y - EYE_HEIGHT; // feet height before this frame's vertical resolution
+  const floorY = getGroundHeight(nx, nz, feetY) + EYE_HEIGHT;
 
   if (keys['Space'] && onGround) {
     verticalVelocity = JUMP_SPEED;
