@@ -150,7 +150,33 @@ io.on('connection', (socket) => {
     if (!targetSocket || targetSocket.currentRoom !== roomId) return;
     targetSocket.emit('voiceSignal', { id: socket.id, signal: data.signal });
   });
+socket.on('selfSmite', () => {
+    const roomId = socket.currentRoom;
+    if (!roomId || !rooms[roomId]) return;
+    const room = rooms[roomId];
+    const target = room.players.get(socket.id);
+    if (!target || target.alive === false) return;
 
+    target.alive = false;
+    target.deaths = (target.deaths || 0) + 1;
+
+    io.to(roomId).emit('playerKilled', {
+      targetId: socket.id, killerId: null, killerUsername: null,
+      targetUsername: target.username, smite: true
+    });
+    broadcastLeaderboard(roomId);
+
+    setTimeout(() => {
+      if (!rooms[roomId]) return;
+      const t = rooms[roomId].players.get(socket.id);
+      if (!t) return;
+      const respawnPoint = pickSpawnPoint(rooms[roomId], socket.id);
+      t.alive = true;
+      t.x = respawnPoint.x; t.y = 1.7; t.z = respawnPoint.z; t.yaw = 0;
+      t.invulnerableUntil = Date.now() + SPAWN_PROTECTION_MS;
+      io.to(roomId).emit('playerRespawned', { id: socket.id, x: respawnPoint.x, z: respawnPoint.z });
+    }, RESPAWN_DELAY_MS);
+  });
   socket.on('hitPlayer', (data) => {
     const roomId = socket.currentRoom;
     if (!roomId || !rooms[roomId]) return;
