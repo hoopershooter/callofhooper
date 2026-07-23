@@ -993,7 +993,7 @@ function makeHouse(cx, houseCenterZ, sign) {
   floorSlab(cx + 5.75 * SCALE, FLOOR_H, (eastZa + eastZb) / 2, 2.5 * SCALE, Math.abs(eastZb - eastZa));
   const eastZc = wz(-0.2), eastZd = wz(5);
   floorSlab(cx + 5.75 * SCALE, FLOOR_H, (eastZc + eastZd) / 2, 2.5 * SCALE, Math.abs(eastZd - eastZc));
-  flatFloors.push({ xMin: cx - HW, xMax: cx - 4.5 * SCALE + HW, zMin: Math.min(slabZ1, slabZ2), zMax: Math.max(slabZ1, slabZ2), y: FLOOR_H });
+  flatFloors.push({ xMin: cx - HW, xMax: STAIR_XMIN, zMin: Math.min(slabZ1, slabZ2), zMax: Math.max(slabZ1, slabZ2), y: FLOOR_H });
   flatFloors.push({ xMin: STAIR_XMIN, xMax: STAIR_XMAX, zMin: Math.min(eastZa, eastZb), zMax: Math.max(eastZa, eastZb), y: FLOOR_H });
   flatFloors.push({ xMin: STAIR_XMIN, xMax: STAIR_XMAX, zMin: Math.min(eastZc, eastZd), zMax: Math.max(eastZc, eastZd), y: FLOOR_H });
 
