@@ -741,8 +741,11 @@ const tex = makeBuildingWallTexture();
     roof.castShadow = true;
     group.add(roof);
     collisionMeshes.push(roof);
+    colliders.push({ x: cx, z: houseCenterZ, halfW: 7.3 * SCALE, halfD: 5.3 * SCALE, yMin: roof.position.y - 0.15, yMax: roof.position.y + 0.15 });
     roofY = h + roofH;
   }
+
+  
   // 'flat' style: no extra roof piece added, roofY stays = h
 
   group.position.set(x, 0, z);
@@ -1078,6 +1081,7 @@ const STAIR_HALF_W = 1.25 * SCALE;
   roof.castShadow = roof.receiveShadow = true;
   scene.add(roof);
   collisionMeshes.push(roof);
+  colliders.push({ x: wingCenterX, z: houseCenterZ, halfW: WING_HALF_W + 0.2, halfD: 5.3 * SCALE, yMin: roof.position.y - 0.15, yMax: roof.position.y + 0.15 });
 
 const porch = new THREE.Mesh(
     new THREE.BoxGeometry(4 * SCALE, 0.2, 2 * SCALE),
