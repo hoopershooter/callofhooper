@@ -405,7 +405,7 @@ const characterSelectScreen = document.getElementById('characterSelectScreen');
 const characterGrid = document.getElementById('characterGrid');
 const backToTitleFromCharacterButton = document.getElementById('backToTitleFromCharacterButton');
 const usernameInput = document.getElementById('usernameInput');
-const CHARACTER_COUNT = 8;
+const CHARACTER_COUNT = 9;
 let selectedCharacter = 1;
 
 function getLocalUsername() {
@@ -536,6 +536,7 @@ const characterTextures = [
   new THREE.TextureLoader().load("character6.jpeg"),
   new THREE.TextureLoader().load("character7.jpeg"),
   new THREE.TextureLoader().load("character8.jpeg"),
+  new THREE.TextureLoader().load("character9.png"),
 ];
 const dummyTexture = new THREE.TextureLoader().load("dummy.png");
 const towerTexture = new THREE.TextureLoader().load("tower2.png");
