@@ -963,14 +963,43 @@ function makeHouse(cx, houseCenterZ, sign) {
   houseWall(cx - HW, 0, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
   houseWall(cx + HW, 0, houseCenterZ, T, FLOOR_H, 10 * SCALE, wallColor);
 
-  const doorHalf = 1.5 * SCALE;
+const doorHalf = 1.5 * SCALE;
   const entranceZ = wz(5);
   houseWall(cx - (HW + doorHalf) / 2, 0, entranceZ, HW - doorHalf, FLOOR_H, T, wallColor);
   houseWall(cx + (HW + doorHalf) / 2, 0, entranceZ, HW - doorHalf, FLOOR_H, T, wallColor);
 
+  // door header (trim board across the top of the doorway, so it reads as a real opening, not just a gap)
+  const doorHeaderH = 0.5 * SCALE;
+  const doorFrameMat = 0x4a2f1a;
+  houseWall(cx, FLOOR_H - doorHeaderH, entranceZ, doorHalf * 2 + T, doorHeaderH, T * 1.5, doorFrameMat);
+
   const backZ = wz(-5);
-  houseWall(cx - (HW + doorHalf) / 2, 0, backZ, HW - doorHalf, FLOOR_H, T, wallColor);
-  houseWall(cx + (HW + doorHalf) / 2, 0, backZ, HW - doorHalf, FLOOR_H, T, wallColor);
+  const windowHalf = 1.1 * SCALE; // narrower than the door, so it reads as a window opening
+  houseWall(cx - (HW + windowHalf) / 2, 0, backZ, HW - windowHalf, FLOOR_H, T, wallColor);
+  houseWall(cx + (HW + windowHalf) / 2, 0, backZ, HW - windowHalf, FLOOR_H, T, wallColor);
+
+  // window sill (below) and header (above) so the opening sits mid-wall like a real window, not floor-to-ceiling
+  const windowSillH = 1.0 * SCALE;
+  const windowOpeningH = 1.6 * SCALE;
+  houseWall(cx, 0, backZ, windowHalf * 2 + T, windowSillH, T * 1.2, wallColor);
+  houseWall(cx, windowSillH + windowOpeningH, backZ, windowHalf * 2 + T, FLOOR_H - windowSillH - windowOpeningH, T * 1.2, wallColor);
+
+  // window frame trim + glass pane, filling the opening visually (not added to colliders, so it stays see-through/shootable)
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x4a2f1a, flatShading: true });
+  const frameThickness = 0.12 * SCALE;
+  const vBar = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, windowOpeningH, T * 1.4), frameMat);
+  vBar.position.set(cx, windowSillH + windowOpeningH / 2, backZ);
+  scene.add(vBar);
+  const hBar = new THREE.Mesh(new THREE.BoxGeometry(windowHalf * 2, frameThickness, T * 1.4), frameMat);
+  hBar.position.set(cx, windowSillH + windowOpeningH / 2, backZ);
+  scene.add(hBar);
+
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0xbfe3f0, transparent: true, opacity: 0.35, side: THREE.DoubleSide
+  });
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(windowHalf * 2 - frameThickness, windowOpeningH - frameThickness), glassMat);
+  glass.position.set(cx, windowSillH + windowOpeningH / 2, backZ);
+  scene.add(glass);
 
   const innerDoorHalf = 1.2 * SCALE;
   const div1Z = wz(1.8);
