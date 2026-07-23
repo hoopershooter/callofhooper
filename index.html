@@ -1354,7 +1354,39 @@ function triggerBloodMist(x, y, z, color) {
   }
   animateMist();
 }
-  
+
+const bloodStains = []; // {mesh, mat, expiresAt}
+const BLOOD_STAIN_LIFETIME_MS = 5 * 60 * 1000; // 5 minutes
+
+function paintBloodStain(x, z, groundY) {
+  const size = 2.5 + Math.random() * 1.5;
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x6b0f0f, transparent: true, opacity: 0.55,
+    depthWrite: false, side: THREE.DoubleSide
+  });
+  const mesh = new THREE.Mesh(new THREE.CircleGeometry(size, 16), mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(x, groundY + 0.03, z);
+  mesh.rotation.z = Math.random() * Math.PI * 2;
+  scene.add(mesh);
+  bloodStains.push({ mesh, mat, expiresAt: performance.now() + BLOOD_STAIN_LIFETIME_MS });
+}
+
+function updateBloodStains() {
+  const now = performance.now();
+  const FADE_WINDOW_MS = 15000;
+  for (let i = bloodStains.length - 1; i >= 0; i--) {
+    const s = bloodStains[i];
+    const remaining = s.expiresAt - now;
+    if (remaining <= 0) {
+      scene.remove(s.mesh);
+      bloodStains.splice(i, 1);
+    } else if (remaining < FADE_WINDOW_MS) {
+      s.mat.opacity = 0.55 * (remaining / FADE_WINDOW_MS);
+    }
+  }
+}
+
 function triggerLightningBolt(x, z, groundY) {
   const group = new THREE.Group();
   const boltMat = new THREE.MeshBasicMaterial({ color: 0xfff59d, transparent: true, opacity: 1 });
