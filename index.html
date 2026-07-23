@@ -1297,7 +1297,76 @@ socket.on('leaderboardUpdate', (list) => {
   }
 });
 
+function triggerBloodMist(x, y, z) {
+  const group = new THREE.Group();
+  const PARTICLE_COUNT = 18;
+  const particles = [];
 
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const size = 0.3 + Math.random() * 0.6;
+    const mat = new THREE.MeshBasicMaterial({ color: 0x8a0f0f, transparent: true, opacity: 0.75 });
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 6, 6), mat);
+    mesh.position.set(x, y, z);
+    const dir = new THREE.Vector3((Math.random() - 0.5), Math.random() * 0.6 + 0.2, (Math.random() - 0.5)).normalize();
+    const speed = 1.5 + Math.random() * 2.5;
+    group.add(mesh);
+    particles.push({ mesh, velocity: dir.multiplyScalar(speed), mat });
+  }
+  scene.add(group);
+
+  const start = performance.now();
+  const DURATION = 900;
+  function animateMist() {
+    const elapsed = performance.now() - start;
+    const t = Math.min(1, elapsed / DURATION);
+    const dt = 0.016;
+    for (const p of particles) {
+      p.mesh.position.addScaledVector(p.velocity, dt);
+      p.velocity.y -= dt * 2; // gentle gravity so the mist settles rather than flying off forever
+      p.mat.opacity = 0.75 * (1 - t);
+      const scale = 1 + t * 1.5;
+      p.mesh.scale.set(scale, scale, scale);
+    }
+    if (t < 1) {
+      requestAnimationFrame(animateMist);
+    } else {
+      scene.remove(group);
+    }
+  }
+  animateMist();
+}
+
+const bloodStains = []; // {mesh, mat, expiresAt}
+const BLOOD_STAIN_LIFETIME_MS = 5 * 60 * 1000; // 5 minutes
+
+function paintBloodStain(x, z, groundY) {
+  const size = 2.5 + Math.random() * 1.5;
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x6b0f0f, transparent: true, opacity: 0.55,
+    depthWrite: false, side: THREE.DoubleSide
+  });
+  const mesh = new THREE.Mesh(new THREE.CircleGeometry(size, 16), mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(x, groundY + 0.03, z); // just above the ground to avoid z-fighting
+  mesh.rotation.z = Math.random() * Math.PI * 2; // vary orientation so stains don't look identical
+  scene.add(mesh);
+  bloodStains.push({ mesh, mat, expiresAt: performance.now() + BLOOD_STAIN_LIFETIME_MS, createdAt: performance.now() });
+}
+
+function updateBloodStains() {
+  const now = performance.now();
+  const FADE_WINDOW_MS = 15000; // start fading out in the last 15s of life
+  for (let i = bloodStains.length - 1; i >= 0; i--) {
+    const s = bloodStains[i];
+    const remaining = s.expiresAt - now;
+    if (remaining <= 0) {
+      scene.remove(s.mesh);
+      bloodStains.splice(i, 1);
+    } else if (remaining < FADE_WINDOW_MS) {
+      s.mat.opacity = 0.55 * (remaining / FADE_WINDOW_MS);
+    }
+  }
+}
 
 function triggerLightningBolt(x, z, groundY) {
   const group = new THREE.Group();
@@ -1340,17 +1409,26 @@ socket.on('playerKilled', (data) => {
     isDead = true;
     killedByText.textContent = data.smite ? 'Smited by the heavens ⚡' : ('Killed by ' + (data.killerUsername || 'Unknown'));
     deathOverlay.classList.add('active');
+    const gy = camera.position.y - EYE_HEIGHT;
     if (data.smite) {
-      triggerLightningBolt(camera.position.x, camera.position.z, camera.position.y - EYE_HEIGHT);
+      triggerLightningBolt(camera.position.x, camera.position.z, gy);
+    } else {
+      triggerBloodMist(camera.position.x, camera.position.y - 0.3, camera.position.z);
+      paintBloodStain(camera.position.x, camera.position.z, gy);
     }
   } else if (otherPlayers[data.targetId]) {
+    const pos = otherPlayers[data.targetId].group.position;
+    const gy = pos.y - EYE_HEIGHT;
     otherPlayers[data.targetId].group.visible = false;
     if (data.smite) {
-      triggerLightningBolt(otherPlayers[data.targetId].group.position.x, otherPlayers[data.targetId].group.position.z, otherPlayers[data.targetId].group.position.y - EYE_HEIGHT);
+      triggerLightningBolt(pos.x, pos.z, gy);
+    } else {
+      triggerBloodMist(pos.x, pos.y - 0.3, pos.z);
+      paintBloodStain(pos.x, pos.z, gy);
     }
   }
 });
-
+  
 socket.on('playerRespawned', (data) => {
   const spawnY = getGroundHeight(data.x, data.z) + EYE_HEIGHT;
   if (data.id === socket.id) {
@@ -1903,6 +1981,7 @@ function animate() {
   updateDummies();
   updateOtherPlayers(dt);
   sendLocalPlayerState(now);
+  updateBloodStains();
 
   renderer.render(scene, camera);
 }
