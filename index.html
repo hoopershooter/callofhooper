@@ -1315,7 +1315,7 @@ function createPlayerModel(character) {
   const tex = characterTextures[(character || 1) - 1] || characterTextures[0];
   const material = new THREE.SpriteMaterial({ map: tex, transparent: true });
   const sprite = new THREE.Sprite(material);
-  sprite.scale.set(2, 3, 1);
+  sprite.scale.set(1.4, 2.1, 1);
   scene.add(sprite);
   return sprite;
 }
@@ -1854,7 +1854,7 @@ let nx = camera.position.x + move.x;
 
   // proper box collision — find closest point on each box to the player, push out if too close
   for (const c of colliders) {
-    if (c.yMin !== undefined && (feetYForCollision + PLAYER_HEIGHT < c.yMin || feetYForCollision > c.yMax)) {
+    if (c.yMin !== undefined && (feetYForCollision + PLAYER_HEIGHT < c.yMin || feetYForCollision >= c.yMax)) {
       continue; // player's current height doesn't overlap this collider's vertical range at all
     }
     const closestX = Math.max(c.x - c.halfW, Math.min(nx, c.x + c.halfW));
