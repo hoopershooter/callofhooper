@@ -1080,8 +1080,7 @@ const STAIR_HALF_W = 1.25 * SCALE;
   roof.castShadow = roof.receiveShadow = true;
   scene.add(roof);
   collisionMeshes.push(roof);
-  colliders.push({ x: cx, z: houseCenterZ, halfW: 7.3 * SCALE, halfD: 5.3 * SCALE, yMin: roof.position.y - 0.15, yMax: roof.position.y + 0.15 });
-
+  
 const porch = new THREE.Mesh(
     new THREE.BoxGeometry(4 * SCALE, 0.2, 2 * SCALE),
     new THREE.MeshStandardMaterial({ color: 0x6b4a3a, flatShading: true })
@@ -1089,26 +1088,6 @@ const porch = new THREE.Mesh(
   porch.position.set(cx, FLOOR_H - 0.1, wz(6));
   scene.add(porch);
 
-
-  // furniture helper — small pieces that also collide, like real obstacles
-  function furniturePiece(x, y, z, w, h, d, color) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, flatShading: true }));
-    mesh.position.set(x, y + h / 2, z);
-    mesh.castShadow = mesh.receiveShadow = true;
-    scene.add(mesh);
-    collisionMeshes.push(mesh);
-    colliders.push({ x, z, halfW: w / 2, halfD: d / 2 });
-  }
-
-  // living room: couch + small table
-  furniturePiece(cx - 9, 0, houseCenterZ, 3, 1, 1.2, 0x445566);
-  furniturePiece(cx - 2, 0, houseCenterZ, 1.5, 0.9, 1.5, 0x8a6b4f);
-
-  // back room: bed-sized piece, doubling as a couch/lounge downstairs
-  furniturePiece(cx - 6, 0, wz(-4), 2.2, 1, 3.2, 0x774455);
-
-  // upstairs bedroom: bed, placed clear of the stairwell opening
-  furniturePiece(cx - 6, FLOOR_H, wz(-4), 2.2, 1, 3.2, 0x774455);
 }
 
 function makeHouseWing(cx, houseCenterZ, sign, side) {
@@ -1163,7 +1142,6 @@ function makeHouseWing(cx, houseCenterZ, sign, side) {
   roof.castShadow = roof.receiveShadow = true;
   scene.add(roof);
   collisionMeshes.push(roof);
-  colliders.push({ x: wingCenterX, z: houseCenterZ, halfW: WING_HALF_W + 0.2, halfD: 5.3 * SCALE, yMin: roof.position.y - 0.15, yMax: roof.position.y + 0.15 });
 
   const porch = new THREE.Mesh(
     new THREE.BoxGeometry(3 * SCALE, 0.2, 1.5 * SCALE),
