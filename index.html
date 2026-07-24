@@ -1080,6 +1080,7 @@ const STAIR_HALF_W = 1.25 * SCALE;
   roof.castShadow = roof.receiveShadow = true;
   scene.add(roof);
   collisionMeshes.push(roof);
+  flatFloors.push({ xMin: cx - 7.3 * SCALE, xMax: cx + 7.3 * SCALE, zMin: houseCenterZ - 5.3 * SCALE, zMax: houseCenterZ + 5.3 * SCALE, y: FLOOR_H * 2 + 0.3 });
   
 const porch = new THREE.Mesh(
     new THREE.BoxGeometry(4 * SCALE, 0.2, 2 * SCALE),
@@ -1142,7 +1143,7 @@ function makeHouseWing(cx, houseCenterZ, sign, side) {
   roof.castShadow = roof.receiveShadow = true;
   scene.add(roof);
   collisionMeshes.push(roof);
-
+  flatFloors.push({ xMin: wingCenterX - (WING_HALF_W + 0.2), xMax: wingCenterX + (WING_HALF_W + 0.2), zMin: houseCenterZ - 5.3 * SCALE, zMax: houseCenterZ + 5.3 * SCALE, y: FLOOR_H + 0.3 });
   const porch = new THREE.Mesh(
     new THREE.BoxGeometry(3 * SCALE, 0.2, 1.5 * SCALE),
     new THREE.MeshStandardMaterial({ color: 0x6b4a3a, flatShading: true })
