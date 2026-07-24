@@ -1310,6 +1310,7 @@ makeDummy(-8, 2);
 
 // ---------- Other players (multiplayer) ----------
 const otherPlayers = {}; // socketId -> { group, targetPos, targetYaw, currentYaw }
+const deadOtherPlayers = new Set();
 
 function createPlayerModel(character) {
   const tex = characterTextures[(character || 1) - 1] || characterTextures[0];
@@ -1349,6 +1350,7 @@ socket.on('playerUpdate', (data) => spawnOrUpdatePlayer(data.id, data.x, data.y,
 
 function updateOtherPlayers(dt) {
   for (const id in otherPlayers) {
+    if (deadOtherPlayers.has(id)) continue;
     const p = otherPlayers[id];
     p.group.position.lerp(p.targetPos, Math.min(1, dt * 10));
   }
@@ -1366,6 +1368,7 @@ function sendLocalPlayerState(now) {
   // ---------- Death / respawn ----------
 const deathOverlay = document.getElementById('deathOverlay');
 let isDead = false;
+let spectateTargetId = null;
 
 const killedByText = document.getElementById('killedByText');
   // ---------- Leaderboard ----------
@@ -1384,6 +1387,31 @@ socket.on('leaderboardUpdate', (list) => {
     leaderboardBody.appendChild(row);
   }
 });
+
+  function updateSpectatorCam(dt) {
+  if (!spectateTargetId || !otherPlayers[spectateTargetId]) return;
+  const targetPos = otherPlayers[spectateTargetId].group.position;
+  const desired = new THREE.Vector3(targetPos.x, targetPos.y + 2.5, targetPos.z + 5);
+  camera.position.lerp(desired, Math.min(1, dt * 3));
+  camera.lookAt(targetPos.x, targetPos.y, targetPos.z);
+}
+  
+  function triggerBodyDrop(group, groundY) {
+  const startY = group.position.y, endY = groundY + 0.15;
+  const startScaleY = group.scale.y, endScaleY = startScaleY * 0.18;
+  const startScaleX = group.scale.x, endScaleX = startScaleX * 1.6;
+  const start = performance.now();
+  const DURATION = 350;
+  function step() {
+    const t = Math.min(1, (performance.now() - start) / DURATION);
+    const eased = 1 - Math.pow(1 - t, 3);
+    group.position.y = startY + (endY - startY) * eased;
+    group.scale.y = startScaleY + (endScaleY - startScaleY) * eased;
+    group.scale.x = startScaleX + (endScaleX - startScaleX) * eased;
+    if (t < 1) requestAnimationFrame(step);
+  }
+  step();
+}
 
 function triggerBloodMist(x, y, z, color) {
   const group = new THREE.Group();
@@ -1496,6 +1524,7 @@ function triggerLightningBolt(x, z, groundY) {
 socket.on('playerKilled', (data) => {
   if (data.targetId === socket.id) {
     isDead = true;
+    spectateTargetId = data.killerId || null;
     killedByText.textContent = data.smite ? 'Smited by the heavens ⚡' : ('Killed by ' + (data.killerUsername || 'Unknown'));
     deathOverlay.classList.add('active');
     const gy = camera.position.y - EYE_HEIGHT;
@@ -1506,9 +1535,11 @@ socket.on('playerKilled', (data) => {
       paintBloodStain(camera.position.x, camera.position.z, gy);
     }
   } else if (otherPlayers[data.targetId]) {
-    const pos = otherPlayers[data.targetId].group.position;
+    const deadGroup = otherPlayers[data.targetId].group;
+    const pos = deadGroup.position;
     const gy = pos.y - EYE_HEIGHT;
-    otherPlayers[data.targetId].group.visible = false;
+    deadOtherPlayers.add(data.targetId);
+    triggerBodyDrop(deadGroup, gy);
     if (data.smite) {
       triggerLightningBolt(pos.x, pos.z, gy);
     } else {
@@ -1522,17 +1553,20 @@ socket.on('playerRespawned', (data) => {
   const spawnY = getGroundHeight(data.x, data.z) + EYE_HEIGHT;
   if (data.id === socket.id) {
     isDead = false;
+    spectateTargetId = null;
     deathOverlay.classList.remove('active');
     camera.position.set(data.x, spawnY, data.z);
     verticalVelocity = 0;
     onGround = true;
   } else if (otherPlayers[data.id]) {
-    otherPlayers[data.id].group.visible = true;
+    const g = otherPlayers[data.id].group;
+    deadOtherPlayers.delete(data.id);
+    g.visible = true;
+    g.scale.set(1.4, 2.1, 1);
     otherPlayers[data.id].targetPos.set(data.x, spawnY, data.z);
-    otherPlayers[data.id].group.position.set(data.x, spawnY, data.z);
+    g.position.set(data.x, spawnY, data.z);
   }
 });
-
   // ---------- Voice chat (WebRTC, push-to-talk) ----------
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 const voicePeers = {}; // socketId -> { pc, audioEl }
@@ -2084,6 +2118,7 @@ function animate() {
   last = now;
 
   updateMovement(dt);
+  if (isDead) updateSpectatorCam(dt);
   updateProjectiles(dt);
   updateTracers(dt);
   updateDummies();
