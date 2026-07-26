@@ -396,7 +396,8 @@ function joinRoom(roomId) {
       serverListScreen.classList.add('hidden');
       gameOverlay.classList.remove('hidden');
 
-    const spawnY = getGroundHeight(response.spawnX, response.spawnZ) + EYE_HEIGHT;
+ const spawnFeetHint = response.spawnOnRoof ? 999 : -Infinity; // forces getGroundHeight to pick the roof surface vs the floor below it
+      const spawnY = getGroundHeight(response.spawnX, response.spawnZ, spawnFeetHint) + EYE_HEIGHT;
       camera.position.set(response.spawnX, spawnY, response.spawnZ);
       verticalVelocity = 0;
       onGround = true;
