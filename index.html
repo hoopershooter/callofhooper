@@ -1586,7 +1586,8 @@ socket.on('playerKilled', (data) => {
 });
   
 socket.on('playerRespawned', (data) => {
-  const spawnY = getGroundHeight(data.x, data.z) + EYE_HEIGHT;
+  const respawnFeetHint = data.onRoof ? 999 : -Infinity;
+  const spawnY = getGroundHeight(data.x, data.z, respawnFeetHint) + EYE_HEIGHT;
   if (data.id === socket.id) {
     isDead = false;
     spectateTargetId = null;
