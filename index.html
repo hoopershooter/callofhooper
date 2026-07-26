@@ -1148,25 +1148,35 @@ function makeHouseWing(cx, houseCenterZ, sign, side) {
   houseWall(wingCenterX, 0, backZ, windowHalf * 2 + T, windowSillH, T * 1.2, wallColor, true);
   houseWall(wingCenterX, windowSillH + windowOpeningH, backZ, windowHalf * 2 + T, FLOOR_H - windowSillH - windowOpeningH, T * 1.2, wallColor, true);
 
-// flat single-story roof with a rectangular hole cut in the middle
+// flat single-story roof with a medium-sized hatch cut in the middle — a real rectangular opening, not a full-width gap
   const roofMat = new THREE.MeshStandardMaterial({ color: 0x6b4a3a, flatShading: true });
   const roofFullDepth = 10.6 * SCALE;
-  const roofHoleHalfDepth = 1.8 * SCALE; // size of the opening, front-to-back
-  const roofSegDepth = (roofFullDepth / 2) - roofHoleHalfDepth;
-  const roofSegOffset = (roofFullDepth / 2 + roofHoleHalfDepth) / 2;
+  const roofFullWidth = WING_HALF_W * 2 + 0.4;
+  const hatchHalfDepth = 1.2 * SCALE; // hatch size, front-to-back
+  const hatchHalfWidth = 1.2 * SCALE; // hatch size, side-to-side
 
-  if (roofSegDepth > 0.01) {
-    const roofFront = new THREE.Mesh(new THREE.BoxGeometry(WING_HALF_W * 2 + 0.4, 0.3, roofSegDepth), roofMat);
-    roofFront.position.set(wingCenterX, FLOOR_H + 0.15, houseCenterZ - roofSegOffset);
-    roofFront.castShadow = roofFront.receiveShadow = true;
-    scene.add(roofFront);
-    collisionMeshes.push(roofFront);
+  const roofPieceHeight = 0.3;
+  const roofY = FLOOR_H + 0.15;
 
-    const roofBack = new THREE.Mesh(new THREE.BoxGeometry(WING_HALF_W * 2 + 0.4, 0.3, roofSegDepth), roofMat);
-    roofBack.position.set(wingCenterX, FLOOR_H + 0.15, houseCenterZ + roofSegOffset);
-    roofBack.castShadow = roofBack.receiveShadow = true;
-    scene.add(roofBack);
-    collisionMeshes.push(roofBack);
+  function roofSlab(x, z, w, d) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, roofPieceHeight, d), roofMat);
+    mesh.position.set(x, roofY, z);
+    mesh.castShadow = mesh.receiveShadow = true;
+    scene.add(mesh);
+    collisionMeshes.push(mesh);
+    colliders.push({ x, z, halfW: w / 2, halfD: d / 2, yMin: roofY - roofPieceHeight / 2, yMax: roofY + roofPieceHeight / 2 });
+  }
+
+  // front strip, back strip, and left/right strips flanking the hatch — a "picture frame" leaving just the hatch open
+  const frontDepth = (roofFullDepth / 2) - hatchHalfDepth;
+  if (frontDepth > 0.01) {
+    roofSlab(wingCenterX, houseCenterZ - (roofFullDepth / 2 + hatchHalfDepth) / 2, roofFullWidth, frontDepth);
+    roofSlab(wingCenterX, houseCenterZ + (roofFullDepth / 2 + hatchHalfDepth) / 2, roofFullWidth, frontDepth);
+  }
+  const sideWidth = (roofFullWidth / 2) - hatchHalfWidth;
+  if (sideWidth > 0.01) {
+    roofSlab(wingCenterX - (roofFullWidth / 2 + hatchHalfWidth) / 2, houseCenterZ, sideWidth, hatchHalfDepth * 2);
+    roofSlab(wingCenterX + (roofFullWidth / 2 + hatchHalfWidth) / 2, houseCenterZ, sideWidth, hatchHalfDepth * 2);
   }
   flatFloors.push({ xMin: wingCenterX - (WING_HALF_W + 0.2), xMax: wingCenterX + (WING_HALF_W + 0.2), zMin: houseCenterZ - 5.3 * SCALE, zMax: houseCenterZ + 5.3 * SCALE, y: FLOOR_H + 0.3 });
   const porch = new THREE.Mesh(
