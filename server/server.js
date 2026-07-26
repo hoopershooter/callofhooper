@@ -152,6 +152,11 @@ io.on('connection', (socket) => {
     socket.to(roomId).emit('shotFired', { id: socket.id, ...data });
   });
 
+  socket.on('fart', (data) => {
+    const roomId = socket.currentRoom;
+    if (!roomId) return;
+    socket.to(roomId).emit('fart', { id: socket.id, ...data });
+  });
   socket.on('voiceSignal', (data) => {
     const roomId = socket.currentRoom;
     if (!roomId || !data || !data.targetId) return;
