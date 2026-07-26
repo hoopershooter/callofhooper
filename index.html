@@ -1736,6 +1736,14 @@ socket.on('announcement', (data) => {
   announcementHideTimer = setTimeout(() => {
     inGameAnnouncementEl.classList.remove('active');
   }, 6000);
+
+  if ('speechSynthesis' in window) {
+    speechSynthesis.cancel(); // stop any announcement still being read, so they don't overlap
+    const utterance = new SpeechSynthesisUtterance(data.text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    speechSynthesis.speak(utterance);
+  }
 });
 document.addEventListener('keydown', (e) => {
   if (e.code === 'KeyF' && currentRoomId && !isDead) {
