@@ -1710,11 +1710,19 @@ socket.on('voiceSignal', async (data) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.code === 'KeyV' && localMicStream && currentRoomId) {
-    localMicStream.getAudioTracks().forEach(track => track.enabled = true);
-    micStatusEl.classList.add('talking');
-    micStatusEl.textContent = '🎙️ Talking...';
+  if (e.code === 'KeyF' && currentRoomId && !isDead) {
+    const now = performance.now();
+    if (now - lastFartTime < FART_COOLDOWN) return;
+    lastFartTime = now;
+    playSfx(fartSound, SFX_VOLUME);
+    triggerBloodMist(camera.position.x, camera.position.y - 0.3, camera.position.z, 0x6b4a1f);
+    socket.emit('fart', { x: camera.position.x, y: camera.position.y - 0.3, z: camera.position.z });
+    triggerFartSpeedEffect();
   }
+});
+socket.on('fart', (data) => {
+  playSfx(fartSound, SFX_VOLUME);
+  triggerBloodMist(data.x, data.y, data.z, 0x6b4a1f);
 });
 let lastFartTime = 0;
 const FART_COOLDOWN = 1000; // ms between farts
@@ -1946,7 +1954,20 @@ const GRAVITY = -22;
 const JUMP_SPEED = 8.5;
 let verticalVelocity = 0;
 let onGround = true;
+let fartSpeedMultiplier = 1.0;
+let fartSpeedTimer = null;
 
+function triggerFartSpeedEffect() {
+  clearTimeout(fartSpeedTimer);
+  fartSpeedMultiplier = 1.5; // 50% boost
+  fartSpeedTimer = setTimeout(() => {
+    fartSpeedMultiplier = 1.5; // 50% slowdown
+    fartSpeedTimer = setTimeout(() => {
+      fartSpeedMultiplier = 1.0; // back to normal
+    }, 1000);
+  }, 1000);
+}
+  
 function updateMovement(dt) {
   if (isDead) return; // frozen in place while dead
 
@@ -1958,7 +1979,7 @@ function updateMovement(dt) {
   if (keys['KeyS']) move.sub(forward);
   if (keys['KeyD']) move.add(right);
   if (keys['KeyA']) move.sub(right);
-  const currentSpeed = isScoped ? SCOPED_MOVE_SPEED : MOVE_SPEED;
+const currentSpeed = (isScoped ? SCOPED_MOVE_SPEED : MOVE_SPEED) * fartSpeedMultiplier;
   if (move.lengthSq() > 0) move.normalize().multiplyScalar(currentSpeed * dt);
 
 let nx = camera.position.x + move.x;
