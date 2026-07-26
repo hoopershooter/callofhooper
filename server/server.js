@@ -13,10 +13,16 @@ const SPAWN_POINTS = {
     { x: -28.5, z: 0 }, { x: -27.2, z: -27.2 }, { x: 0, z: -35.5 }, { x: 25.1, z: -25.1 }
   ],
 grove: [
-    { x: 402, z: 376 }, { x: 405, z: 378 }, { x: 408, z: 380 },
-    { x: 411, z: 377 }, { x: 404, z: 381 }, { x: 407, z: 375 },
-    // under the roof-hole openings in each side wing
-    { x: 378, z: 378 }, { x: 422, z: 378 }, { x: 378, z: 422 }, { x: 422, z: 422 }
+    // main house — upper floor only (west and east sides of the stairwell)
+    { x: 391, z: 376 }, { x: 391, z: 380 }, { x: 409, z: 376 }, { x: 409, z: 380 },
+    // inside the west wing (south house)
+    { x: 378, z: 378 },
+    // inside the east wing (south house)
+    { x: 422, z: 378 },
+    // on top of the west wing's roof
+    { x: 378, z: 378, onRoof: true },
+    // on top of the east wing's roof
+    { x: 422, z: 378, onRoof: true }
   ]
 };
 const MAP_NAMES = { city: 'City', grove: 'Warkworth Grove' };
