@@ -1134,15 +1134,26 @@ function makeHouseWing(cx, houseCenterZ, sign, side) {
   houseWall(wingCenterX, 0, backZ, windowHalf * 2 + T, windowSillH, T * 1.2, wallColor, true);
   houseWall(wingCenterX, windowSillH + windowOpeningH, backZ, windowHalf * 2 + T, FLOOR_H - windowSillH - windowOpeningH, T * 1.2, wallColor, true);
 
-  // flat single-story roof, lower than the main house
-  const roof = new THREE.Mesh(
-    new THREE.BoxGeometry(WING_HALF_W * 2 + 0.4, 0.3, 10.6 * SCALE),
-    new THREE.MeshStandardMaterial({ color: 0x6b4a3a, flatShading: true })
-  );
-  roof.position.set(wingCenterX, FLOOR_H + 0.15, houseCenterZ);
-  roof.castShadow = roof.receiveShadow = true;
-  scene.add(roof);
-  collisionMeshes.push(roof);
+// flat single-story roof with a rectangular hole cut in the middle
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x6b4a3a, flatShading: true });
+  const roofFullDepth = 10.6 * SCALE;
+  const roofHoleHalfDepth = 1.8 * SCALE; // size of the opening, front-to-back
+  const roofSegDepth = (roofFullDepth / 2) - roofHoleHalfDepth;
+  const roofSegOffset = (roofFullDepth / 2 + roofHoleHalfDepth) / 2;
+
+  if (roofSegDepth > 0.01) {
+    const roofFront = new THREE.Mesh(new THREE.BoxGeometry(WING_HALF_W * 2 + 0.4, 0.3, roofSegDepth), roofMat);
+    roofFront.position.set(wingCenterX, FLOOR_H + 0.15, houseCenterZ - roofSegOffset);
+    roofFront.castShadow = roofFront.receiveShadow = true;
+    scene.add(roofFront);
+    collisionMeshes.push(roofFront);
+
+    const roofBack = new THREE.Mesh(new THREE.BoxGeometry(WING_HALF_W * 2 + 0.4, 0.3, roofSegDepth), roofMat);
+    roofBack.position.set(wingCenterX, FLOOR_H + 0.15, houseCenterZ + roofSegOffset);
+    roofBack.castShadow = roofBack.receiveShadow = true;
+    scene.add(roofBack);
+    collisionMeshes.push(roofBack);
+  }
   flatFloors.push({ xMin: wingCenterX - (WING_HALF_W + 0.2), xMax: wingCenterX + (WING_HALF_W + 0.2), zMin: houseCenterZ - 5.3 * SCALE, zMax: houseCenterZ + 5.3 * SCALE, y: FLOOR_H + 0.3 });
   const porch = new THREE.Mesh(
     new THREE.BoxGeometry(3 * SCALE, 0.2, 1.5 * SCALE),
