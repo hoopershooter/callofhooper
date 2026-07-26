@@ -13,10 +13,10 @@ const SPAWN_POINTS = {
     { x: -28.5, z: 0 }, { x: -27.2, z: -27.2 }, { x: 0, z: -35.5 }, { x: 25.1, z: -25.1 }
   ],
 grove: [
-    // House 1 (z = 378): middle, then west wing, then east wing
-    { x: 400,   z: 378 }, { x: 378.4, z: 378 }, { x: 421.6, z: 378 },
-    // House 2 (z = 422): middle, then west wing, then east wing
-    { x: 400,   z: 422 }, { x: 378.4, z: 422 }, { x: 421.6, z: 422 }
+    { x: 402, z: 376 }, { x: 405, z: 378 }, { x: 408, z: 380 },
+    { x: 411, z: 377 }, { x: 404, z: 381 }, { x: 407, z: 375 },
+    // under the roof-hole openings in each side wing
+    { x: 378, z: 378 }, { x: 422, z: 378 }, { x: 378, z: 422 }, { x: 422, z: 422 }
   ]
 };
 const MAP_NAMES = { city: 'City', grove: 'Warkworth Grove' };
@@ -151,6 +151,13 @@ io.on('connection', (socket) => {
     const targetSocket = io.sockets.sockets.get(data.targetId);
     if (!targetSocket || targetSocket.currentRoom !== roomId) return;
     targetSocket.emit('voiceSignal', { id: socket.id, signal: data.signal });
+  });
+socket.on('announce', (message) => {
+    const roomId = socket.currentRoom;
+    if (!roomId || !rooms[roomId]) return;
+    const text = (message || '').toString().trim().slice(0, 100);
+    if (!text) return;
+    io.to(roomId).emit('announcement', { text });
   });
 socket.on('selfSmite', () => {
     const roomId = socket.currentRoom;
