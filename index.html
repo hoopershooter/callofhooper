@@ -1156,7 +1156,7 @@ function makeHouseWing(cx, houseCenterZ, sign, side) {
   const hatchHalfDepth = 1.2 * SCALE; // hatch size, front-to-back
   const hatchHalfWidth = 1.2 * SCALE; // hatch size, side-to-side
 
-  const roofPieceHeight = 0.3;
+const roofPieceHeight = 0.3;
   const roofY = FLOOR_H + 0.15;
 
   function roofSlab(x, z, w, d) {
@@ -1164,8 +1164,10 @@ function makeHouseWing(cx, houseCenterZ, sign, side) {
     mesh.position.set(x, roofY, z);
     mesh.castShadow = mesh.receiveShadow = true;
     scene.add(mesh);
-    collisionMeshes.push(mesh);
-    colliders.push({ x, z, halfW: w / 2, halfD: d / 2, yMin: roofY - roofPieceHeight / 2, yMax: roofY + roofPieceHeight / 2 });
+    collisionMeshes.push(mesh); // still blocks bullets and renders solid
+    // registered as a walkable FLOOR (flatFloors), not a wall (colliders) — a wall would push you
+    // away from its own edges, which was fencing players off from ever reaching the hatch opening
+    flatFloors.push({ xMin: x - w / 2, xMax: x + w / 2, zMin: z - d / 2, zMax: z + d / 2, y: roofY + roofPieceHeight / 2 });
   }
 
   // front strip, back strip, and left/right strips flanking the hatch — a "picture frame" leaving just the hatch open
