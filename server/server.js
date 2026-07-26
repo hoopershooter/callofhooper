@@ -32,6 +32,7 @@ function pickSpawnPoint(room, excludeId) {
   let best = points[0];
   let bestScore = -Infinity;
   for (const sp of points) {
+    if (sp.onRoof) sp._onRoof = true; // preserved through scoring below
     let minDist = Infinity;
     for (const [id, p] of room.players.entries()) {
       if (id === excludeId) continue;
@@ -44,7 +45,7 @@ function pickSpawnPoint(room, excludeId) {
     const score = minDist + Math.random() * 5;
     if (score > bestScore) { bestScore = score; best = sp; }
   }
-  return best;
+  return { ...best, onRoof: !!best.onRoof };
 }
 
 const httpServer = http.createServer((req, res) => {
@@ -129,9 +130,9 @@ io.on('connection', (socket) => {
 
     callback({
       success: true, roomId, playerCount: room.players.size, maxPlayers: room.maxPlayers,
-      existingPlayers, spawnX: spawn.x, spawnZ: spawn.z, mapId: room.mapId
+      existingPlayers, spawnX: spawn.x, spawnZ: spawn.z, spawnOnRoof: spawn.onRoof, mapId: room.mapId
     });
-
+    
     socket.to(roomId).emit('playerJoined', { id: socket.id, character, username });
     broadcastRoomList();
     broadcastLeaderboard(roomId);
@@ -220,7 +221,7 @@ socket.on('selfSmite', () => {
       t.alive = true;
       t.x = respawnPoint.x; t.y = 1.7; t.z = respawnPoint.z; t.yaw = 0;
       t.invulnerableUntil = Date.now() + SPAWN_PROTECTION_MS;
-      io.to(roomId).emit('playerRespawned', { id: targetId, x: respawnPoint.x, z: respawnPoint.z });
+      io.to(roomId).emit('playerRespawned', { id: targetId, x: respawnPoint.x, z: respawnPoint.z, onRoof: respawnPoint.onRoof });
     }, RESPAWN_DELAY_MS);
   });
 
