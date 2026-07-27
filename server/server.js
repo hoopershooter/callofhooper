@@ -8,7 +8,7 @@ const SPAWN_PROTECTION_MS = 3000;
 const ADMIN_KEY = "hooper-admin-2026";
 const MAX_HEALTH = 100;
 const WEAPON_STATS = {
-  sniper: { damage: 75 },
+  sniper: { damage: 100 },
   assault: { damage: 25 },
   smg: { damage: 14 },
   shotgun: { damage: 45 }
