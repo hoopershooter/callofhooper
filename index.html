@@ -914,14 +914,19 @@ const grassTexture = new THREE.TextureLoader().load("grass.png", () => {generate
 grassTexture.wrapT = THREE.RepeatWrapping;
 grassTexture.repeat.set(60, 60); // how many times the image tiles across the ground — raise/lower to taste
 
+const concreteTexture = new THREE.TextureLoader().load("concrete.png", undefined, undefined,
+  () => console.error('FAILED TO LOAD: concrete.png — check the file is in the same folder as this HTML file'));
+concreteTexture.wrapS = THREE.RepeatWrapping;
+concreteTexture.wrapT = THREE.RepeatWrapping;
+concreteTexture.repeat.set(60, 60); // how many times the image tiles across the ground — raise/lower to taste
+
 const groundGeo = new THREE.PlaneGeometry(200, 200);
-const groundMat = new THREE.MeshStandardMaterial({ map: grassTexture });
+const groundMat = new THREE.MeshStandardMaterial({ map: concreteTexture });
 
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI/2;
 ground.receiveShadow = true;
 scene.add(ground);
-
 // ---------- City buildings ----------
 const colliders = []; // {x,z,radius} for simple circular collision approximation
 const collisionMeshes = []; // actual meshes bullets can hit (buildings, walls)
