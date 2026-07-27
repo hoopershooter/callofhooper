@@ -46,10 +46,17 @@
   #settingsMenu input[type="range"] { width: 100%; }
   #settingsMenu .menuButton { margin-top: 18px; }
 
-  #hitmarker {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    font-size: 28px; color: #ffd75e; opacity: 0; pointer-events: none;
-    z-index: 15; transition: opacity 0.15s;
+ #hitmarker {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(1);
+    font-size: 44px; font-weight: bold; color: #ffd75e; opacity: 0; pointer-events: none;
+    z-index: 15; text-shadow: 0 0 10px rgba(255,215,94,0.9), 0 2px 4px rgba(0,0,0,0.8);
+  }
+  #hitmarker.playerHit { color: #ff4d4d; text-shadow: 0 0 14px rgba(255,77,77,0.95), 0 2px 4px rgba(0,0,0,0.8); }
+  #hitmarker.active { animation: hitmarkerPop 0.35s ease-out forwards; }
+  @keyframes hitmarkerPop {
+    0% { transform: translate(-50%,-50%) scale(1.8); opacity: 1; }
+    60% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%,-50%) scale(1); opacity: 0; }
   }
 #deathOverlay {
     position: fixed; inset: 0; z-index: 25; display: none;
@@ -1447,10 +1454,7 @@ function makeFrustumGeometry(baseHalfW, baseHalfD, topHalfW, topHalfD, h) {
 
 function makePlatform(x, z, baseHalfW, baseHalfD, topHalfW, topHalfD, h) {
   const geo = makeFrustumGeometry(baseHalfW, baseHalfD, topHalfW, topHalfD, h);
-  const tex = concreteTexture.clone();
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.needsUpdate = true;
-  const mat = new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide });
+  const mat = new THREE.MeshStandardMaterial({ map: concreteTexture, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(x, 0, z);
   mesh.castShadow = mesh.receiveShadow = true;
@@ -2466,7 +2470,17 @@ function shoot() {
   });
 
   if (hitDummy) registerHit(hitDummy);
-  if (hitPlayerId) socket.emit('hitPlayer', { targetId: hitPlayerId });
+  if (hitPlayerId) {
+    socket.emit('hitPlayer', { targetId: hitPlayerId });
+    triggerHitmarker(true);
+  }
+
+function triggerHitmarker(isPlayerHit) {
+  hitmarker.classList.remove('active');
+  void hitmarker.offsetWidth; // restart animation if triggered again quickly
+  hitmarker.classList.toggle('playerHit', !!isPlayerHit);
+  hitmarker.classList.add('active');
+  playSfx(headshotSound, SFX_VOLUME);
 }
 
 function registerHit(d) {
@@ -2475,10 +2489,9 @@ function registerHit(d) {
   d.respawnAt = performance.now() + 2000;
   score++;
   scoreEl.textContent = score;
-  hitmarker.style.opacity = 1;
-  setTimeout(() => hitmarker.style.opacity = 0, 150);
-  playSfx(headshotSound, SFX_VOLUME);
+  triggerHitmarker(false);
 }
+  
 function updateTracers(dt) {
   for (let i = tracers.length - 1; i >= 0; i--) {
     const t = tracers[i];
