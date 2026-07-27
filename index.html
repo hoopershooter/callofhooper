@@ -2474,7 +2474,7 @@ function shoot() {
     socket.emit('hitPlayer', { targetId: hitPlayerId });
     triggerHitmarker(true);
   }
-
+}
 function triggerHitmarker(isPlayerHit) {
   hitmarker.classList.remove('active');
   void hitmarker.offsetWidth; // restart animation if triggered again quickly
