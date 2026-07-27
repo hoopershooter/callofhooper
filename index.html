@@ -115,7 +115,7 @@
     top: 50%; left: 0; right: 0; height: 2px; transform: translateY(-50%);
   }
 
-#titleScreen, #serverListScreen, #characterSelectScreen {
+#titleScreen, #serverListScreen, #characterSelectScreen, #weaponSelectScreen {
     position: fixed; inset: 0; z-index: 30;
     background-image: url('background1.jpeg');
     background-size: cover;
@@ -123,7 +123,7 @@
     color: black; display: flex; flex-direction: column; align-items: center;
     justify-content: center; text-align: center;
   }
-  #titleScreen.hidden, #serverListScreen.hidden, #characterSelectScreen.hidden { display: none; }
+  #titleScreen.hidden, #serverListScreen.hidden, #characterSelectScreen.hidden, #weaponSelectScreen.hidden { display: none; }
 
   #titleScreen h1 { font-size: 46px; margin-bottom: 6px; }
   #titleScreen p { opacity: 0.75; margin-bottom: 20px; color: white; }
@@ -2029,9 +2029,16 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   if (document.pointerLockElement !== renderer.domElement) {
     renderer.domElement.requestPointerLock();
     startMusicOnce();
+  } else if (AUTO_FIRE_WEAPONS.includes(selectedWeaponId)) {
+    isFiring = true;
+    shoot();
   } else {
     shoot();
   }
+});
+
+document.addEventListener('mouseup', (e) => {
+  if (e.button === 0) isFiring = false;
 });
 
 let hasStartedGame = false;
@@ -2052,6 +2059,7 @@ const backToPauseButton = document.getElementById('backToPauseButton');
 
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === renderer.domElement;
+  isFiring = false;
   if (locked) {
     overlay.classList.add('hidden');
     pauseMenu.classList.remove('active');
@@ -2386,6 +2394,8 @@ socket.on('shotFired', (data) => {
   spawnBulletVisual(start, dir, dist);
 });
 
+const AUTO_FIRE_WEAPONS = ['assault', 'smg'];
+let isFiring = false;
 let lastShotTime = 0;
 
 function shoot() {
@@ -2507,6 +2517,7 @@ function animate() {
   last = now;
 
   updateMovement(dt);
+  if (isFiring && AUTO_FIRE_WEAPONS.includes(selectedWeaponId)) shoot();
   if (isDead) updateSpectatorCam(dt);
   updateProjectiles(dt);
   updateTracers(dt);
