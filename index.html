@@ -454,6 +454,8 @@ function joinRoom(roomId) {
       verticalVelocity = 0;
       onGround = true;
 
+      if (response.mapId === 'city') setNightTheme(); else setDayTheme();
+
       setActiveWeapon(selectedWeaponId);
       localHealth = 100;
       updateHealthHud();
@@ -876,7 +878,8 @@ structureTexture.wrapT = THREE.RepeatWrapping;
 structureTexture.repeat.set(4, 2); // Adjust if needed
 
 // ---------- Lighting ----------
-scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
+scene.add(ambientLight);
 const sun = new THREE.DirectionalLight(0xfff2d0, 0.9);
 sun.position.set(30, 40, 10);
 sun.castShadow = true;
@@ -914,6 +917,47 @@ function setSunSize(size) {
   sunSprite.scale.set(SUN_SIZE, SUN_SIZE, 1);
 }
 window.setSunSize = setSunSize; // lets you resize live from the browser console, e.g. setSunSize(80)
+
+// ---------- Stars (shown only on night maps) ----------
+function makeStarField(count, radius) {
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos((Math.random() * 2) - 1);
+    const r = radius * (0.85 + Math.random() * 0.15);
+    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = Math.abs(r * Math.cos(phi)); // keep stars above the horizon
+    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.4, sizeAttenuation: false });
+  const points = new THREE.Points(geo, mat);
+  points.visible = false;
+  return points;
+}
+const starField = makeStarField(1200, 300);
+scene.add(starField);
+
+// ---------- Day/night theme (city = night, grove = day) ----------
+function setNightTheme() {
+  scene.background = new THREE.Color(0x0a0e2a);
+  scene.fog.color.set(0x0a0e2a);
+  ambientLight.intensity = 0.18;
+  sun.intensity = 0.15;
+  sun.color.set(0x8fa8ff);
+  sunSprite.visible = false;
+  starField.visible = true;
+}
+function setDayTheme() {
+  scene.background = new THREE.Color(0x8fd3ff);
+  scene.fog.color.set(0x8fd3ff);
+  ambientLight.intensity = 0.55;
+  sun.intensity = 0.9;
+  sun.color.set(0xfff2d0);
+  sunSprite.visible = true;
+  starField.visible = false;
+}
 
 const grassTexture = new THREE.TextureLoader().load("grass.png", () => {generatePlatforms(); generateCity(); generateWarkworthGrove(); }, undefined,
   () => console.error('FAILED TO LOAD: grass.png — check the file is in the same folder as this HTML file'));
