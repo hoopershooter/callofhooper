@@ -1447,7 +1447,7 @@ function makeFrustumGeometry(baseHalfW, baseHalfD, topHalfW, topHalfD, h) {
 
 function makePlatform(x, z, baseHalfW, baseHalfD, topHalfW, topHalfD, h) {
   const geo = makeFrustumGeometry(baseHalfW, baseHalfD, topHalfW, topHalfD, h);
-  const tex = grassTexture.clone();
+  const tex = concreteTexture.clone();
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.needsUpdate = true;
   const mat = new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide });
@@ -1457,7 +1457,7 @@ function makePlatform(x, z, baseHalfW, baseHalfD, topHalfW, topHalfD, h) {
   scene.add(mesh);
   platforms.push({ x, z, baseHalfW, baseHalfD, topHalfW, topHalfD, h });
 }
-
+  
 function generatePlatforms() {
 let platformAttempts = 0;
 while (platforms.length < PLATFORM_COUNT && platformAttempts < PLATFORM_COUNT * 80) {
