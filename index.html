@@ -783,12 +783,18 @@ towerTexture.wrapS = THREE.RepeatWrapping;
 towerTexture.wrapT = THREE.RepeatWrapping;
 towerTexture.repeat.set(1, 1); // Adjust if needed
 
-// ---------- Procedural building wall texture (solid base + baked-in windows) ----------
+// ---------- Procedural building wall texture (solid base + baked-in windows, plus a matching glow map) ----------
 function makeBuildingWallTexture() {
   const size = 50;
   const canvas = document.createElement('canvas');
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext('2d');
+
+  const emissiveCanvas = document.createElement('canvas');
+  emissiveCanvas.width = size; emissiveCanvas.height = size;
+  const ectx = emissiveCanvas.getContext('2d');
+  ectx.fillStyle = '#000000';
+  ectx.fillRect(0, 0, size, size);
 
   // flat wall base color (a couple of muted greys/blues for variety)
   const baseColors = ['#5a6066', '#4d5459', '#5f676e'];
@@ -807,15 +813,24 @@ function makeBuildingWallTexture() {
       ctx.strokeStyle = 'rgba(0,0,0,0.4)';
       ctx.lineWidth = 2;
       ctx.strokeRect(c * cellW + pad, r * cellH + pad, cellW - pad * 2, cellH - pad * 2);
+
+      if (lit) {
+        ectx.fillStyle = '#f5dd9b';
+        ectx.fillRect(c * cellW + pad, r * cellH + pad, cellW - pad * 2, cellH - pad * 2);
+      }
     }
   }
 
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  return tex;
-}
+  const colorTex = new THREE.CanvasTexture(canvas);
+  colorTex.wrapS = THREE.RepeatWrapping;
+  colorTex.wrapT = THREE.RepeatWrapping;
 
+  const emissiveTex = new THREE.CanvasTexture(emissiveCanvas);
+  emissiveTex.wrapS = THREE.RepeatWrapping;
+  emissiveTex.wrapT = THREE.RepeatWrapping;
+
+  return { colorTex, emissiveTex };
+}
 
 function loadPowerOfTwoTexture(url, size = 512, onReady) {
   const texture = new THREE.Texture();
@@ -988,10 +1003,17 @@ const flatFloors = []; // {xMin,xMax,zMin,zMax,y} - flat indoor floor slabs (upp
 function makeBuilding(x, z, w, d, h, style) {
   const group = new THREE.Group();
 
-const tex = makeBuildingWallTexture();
-  tex.repeat.set(Math.max(1, w / 3.5), Math.max(1, h / 3.5));
+const { colorTex, emissiveTex } = makeBuildingWallTexture();
+  const wallRepeatX = Math.max(1, w / 3.5), wallRepeatY = Math.max(1, h / 3.5);
+  colorTex.repeat.set(wallRepeatX, wallRepeatY);
+  emissiveTex.repeat.set(wallRepeatX, wallRepeatY);
 
-  const mat = new THREE.MeshStandardMaterial({ map: tex });
+  const mat = new THREE.MeshStandardMaterial({
+    map: colorTex,
+    emissiveMap: emissiveTex,
+    emissive: 0xffdd99,
+    emissiveIntensity: 1.1
+  });
   const main = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   main.position.y = h / 2;
   main.castShadow = main.receiveShadow = true;
