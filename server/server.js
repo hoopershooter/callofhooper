@@ -6,6 +6,14 @@ const MAX_PLAYERS_PER_ROOM = 8;
 const RESPAWN_DELAY_MS = 3000;
 const SPAWN_PROTECTION_MS = 3000;
 const ADMIN_KEY = "hooper-admin-2026";
+const MAX_HEALTH = 100;
+const WEAPON_STATS = {
+  sniper: { damage: 75 },
+  assault: { damage: 25 },
+  smg: { damage: 14 },
+  shotgun: { damage: 45 }
+};
+const DEFAULT_WEAPON = 'sniper';
 
 const SPAWN_POINTS = {
   city: [
@@ -122,10 +130,12 @@ io.on('connection', (socket) => {
     const existingPlayers = [];
     for (const [id, state] of room.players.entries()) existingPlayers.push({ id, ...state });
 
+  const weaponId = WEAPON_STATS[data && data.weaponId] ? data.weaponId : DEFAULT_WEAPON;
     const spawn = pickSpawnPoint(room, socket.id);
     room.players.set(socket.id, {
       x: spawn.x, y: 1.7, z: spawn.z, yaw: 0, character, username,
-      alive: true, invulnerableUntil: Date.now() + SPAWN_PROTECTION_MS, kills: 0, deaths: 0
+      alive: true, invulnerableUntil: Date.now() + SPAWN_PROTECTION_MS, kills: 0, deaths: 0,
+      weaponId, pendingWeaponId: weaponId, health: MAX_HEALTH, maxHealth: MAX_HEALTH
     });
 
     callback({
@@ -157,13 +167,23 @@ io.on('connection', (socket) => {
     if (!roomId) return;
     socket.to(roomId).emit('fart', { id: socket.id, ...data });
   });
-  socket.on('voiceSignal', (data) => {
+ socket.on('voiceSignal', (data) => {
     const roomId = socket.currentRoom;
     if (!roomId || !data || !data.targetId) return;
     const targetSocket = io.sockets.sockets.get(data.targetId);
     if (!targetSocket || targetSocket.currentRoom !== roomId) return;
     targetSocket.emit('voiceSignal', { id: socket.id, signal: data.signal });
   });
+
+  socket.on('setPendingWeapon', (data) => {
+    const roomId = socket.currentRoom;
+    if (!roomId || !rooms[roomId]) return;
+    const player = rooms[roomId].players.get(socket.id);
+    const weaponId = data && data.weaponId;
+    if (!player || !WEAPON_STATS[weaponId]) return;
+    player.pendingWeaponId = weaponId;
+  });
+
 socket.on('announce', (message) => {
     const roomId = socket.currentRoom;
     if (!roomId || !rooms[roomId]) return;
@@ -187,7 +207,7 @@ socket.on('selfSmite', () => {
     });
     broadcastLeaderboard(roomId);
 
-    setTimeout(() => {
+setTimeout(() => {
       if (!rooms[roomId]) return;
       const t = rooms[roomId].players.get(socket.id);
       if (!t) return;
@@ -195,10 +215,12 @@ socket.on('selfSmite', () => {
       t.alive = true;
       t.x = respawnPoint.x; t.y = 1.7; t.z = respawnPoint.z; t.yaw = 0;
       t.invulnerableUntil = Date.now() + SPAWN_PROTECTION_MS;
-      io.to(roomId).emit('playerRespawned', { id: socket.id, x: respawnPoint.x, z: respawnPoint.z });
+      t.weaponId = t.pendingWeaponId;
+      t.health = t.maxHealth;
+      io.to(roomId).emit('playerRespawned', { id: socket.id, x: respawnPoint.x, z: respawnPoint.z, weaponId: t.weaponId });
     }, RESPAWN_DELAY_MS);
   });
-  socket.on('hitPlayer', (data) => {
+socket.on('hitPlayer', (data) => {
     const roomId = socket.currentRoom;
     if (!roomId || !rooms[roomId]) return;
     const room = rooms[roomId];
@@ -208,6 +230,14 @@ socket.on('selfSmite', () => {
     if (!target || !killer) return;
     if (target.alive === false) return;
     if (Date.now() < (target.invulnerableUntil || 0)) return;
+
+    const stats = WEAPON_STATS[killer.weaponId] || WEAPON_STATS[DEFAULT_WEAPON];
+    target.health = (target.health == null ? MAX_HEALTH : target.health) - stats.damage;
+
+    if (target.health > 0) {
+      io.to(roomId).emit('playerDamaged', { targetId, health: target.health, maxHealth: target.maxHealth || MAX_HEALTH });
+      return;
+    }
 
     target.alive = false;
     target.deaths = (target.deaths || 0) + 1;
@@ -226,7 +256,9 @@ socket.on('selfSmite', () => {
       t.alive = true;
       t.x = respawnPoint.x; t.y = 1.7; t.z = respawnPoint.z; t.yaw = 0;
       t.invulnerableUntil = Date.now() + SPAWN_PROTECTION_MS;
-      io.to(roomId).emit('playerRespawned', { id: targetId, x: respawnPoint.x, z: respawnPoint.z, onRoof: respawnPoint.onRoof });
+      t.weaponId = t.pendingWeaponId;
+      t.health = t.maxHealth;
+      io.to(roomId).emit('playerRespawned', { id: targetId, x: respawnPoint.x, z: respawnPoint.z, weaponId: t.weaponId });
     }, RESPAWN_DELAY_MS);
   });
 
