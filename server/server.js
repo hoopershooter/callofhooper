@@ -37,22 +37,7 @@ const MAP_NAMES = { city: 'City', grove: 'Warkworth Grove' };
 
 function pickSpawnPoint(room, excludeId) {
   const points = SPAWN_POINTS[room.mapId] || SPAWN_POINTS.city;
-  let best = points[0];
-  let bestScore = -Infinity;
-  for (const sp of points) {
-    if (sp.onRoof) sp._onRoof = true; // preserved through scoring below
-    let minDist = Infinity;
-    for (const [id, p] of room.players.entries()) {
-      if (id === excludeId) continue;
-      if (p.alive === false) continue;
-      const dx = sp.x - p.x, dz = sp.z - p.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-      if (dist < minDist) minDist = dist;
-    }
-    if (minDist === Infinity) minDist = 999;
-    const score = minDist + Math.random() * 5;
-    if (score > bestScore) { bestScore = score; best = sp; }
-  }
+  const best = points[Math.floor(Math.random() * points.length)];
   return { ...best, onRoof: !!best.onRoof };
 }
 
