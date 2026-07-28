@@ -285,6 +285,7 @@
     <select id="createRoomMap">
       <option value="city">City</option>
       <option value="grove">Warkworth Grove</option>
+      <option value="school">Bitch Ass School</option>
     </select>
     <button class="menuButton" id="createRoomButton">Create</button>
   </div>
@@ -454,7 +455,9 @@ function joinRoom(roomId) {
       verticalVelocity = 0;
       onGround = true;
 
-      if (response.mapId === 'city') setNightTheme(); else setDayTheme();
+      if (response.mapId === 'city') setNightTheme();
+      else if (response.mapId === 'school') setInteriorTheme();
+      else setDayTheme();
 
       setActiveWeapon(selectedWeaponId);
       localHealth = 100;
@@ -958,6 +961,7 @@ scene.add(starField);
 function setNightTheme() {
   scene.background = new THREE.Color(0x0a0e2a);
   scene.fog.color.set(0x0a0e2a);
+  scene.fog.near = 30; scene.fog.far = 90;
   ambientLight.intensity = 0.18;
   sun.intensity = 0.15;
   sun.color.set(0x8fa8ff);
@@ -967,10 +971,20 @@ function setNightTheme() {
 function setDayTheme() {
   scene.background = new THREE.Color(0x8fd3ff);
   scene.fog.color.set(0x8fd3ff);
+  scene.fog.near = 30; scene.fog.far = 90;
   ambientLight.intensity = 0.55;
   sun.intensity = 0.9;
   sun.color.set(0xfff2d0);
   sunSprite.visible = true;
+  starField.visible = false;
+}
+function setInteriorTheme() {
+  scene.background = new THREE.Color(0x050505);
+  scene.fog.color.set(0x050505);
+  scene.fog.near = 5; scene.fog.far = 45;
+  ambientLight.intensity = 0.06;
+  sun.intensity = 0;
+  sunSprite.visible = false;
   starField.visible = false;
 }
 
@@ -1251,7 +1265,19 @@ makeTrainCar(GX - 22, GZ - 3, Math.PI / 2);
   collisionMeshes.push(pool);
   colliders.push({ x: GX, z: GZ, halfW: 4, halfD: 4 });
 }
-  
+
+function glassPane(x, y, z, w, h, d) {
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xbfe3f0, transparent: true, opacity: 0.22, side: THREE.DoubleSide, flatShading: true
+  });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  mesh.position.set(x, y + h / 2, z);
+  scene.add(mesh);
+  collisionMeshes.push(mesh);
+  colliders.push({ x, z, halfW: w / 2, halfD: d / 2, yMin: y, yMax: y + h });
+  return mesh;
+}
+
 function houseWall(x, y, z, w, h, d, color, skipPlayerCollision) {
   const mat = new THREE.MeshStandardMaterial({ color: color || 0xd8c9a8, flatShading: true });
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -1478,6 +1504,158 @@ const roofPieceHeight = 0.3;
   porch.position.set(wingCenterX, FLOOR_H - 0.1, wz(6));
   scene.add(porch);
 }
+// ---------- Bitch Ass School (two-story building, classrooms off a central corridor) ----------
+function generateSchool() {
+  const SX = 900, SZ = 0;
+  const WALL_H = 5;
+  const WALL_T = 0.4;
+  const CORR_HALF_W = 2.5;
+  const ROOM_DEPTH = 9;
+  const wallColor = 0x161616;
+  const lockerColor = 0x8a3030;
+  const STAIR_HALF_W = CORR_HALF_W;
+  const STAIR_Z_START = 17.5;
+  const STAIR_Z_END = STAIR_Z_START + 8;
+  const SOUTH_WALL_Z = -18;
+  const BUILD_X_MIN = -(CORR_HALF_W + ROOM_DEPTH);
+  const BUILD_X_MAX = CORR_HALF_W + ROOM_DEPTH;
+
+  function worldX(lx) { return SX + lx; }
+  function worldZ(lz) { return SZ + lz; }
+
+  function openingWallAlongZ(lx, zStart, zEnd, y, wallHeight, openings) {
+    const doorH = wallHeight * 0.62;
+    const winSill = wallHeight * 0.35, winTop = wallHeight * 0.8;
+    let cursor = zStart;
+    const sorted = [...openings].sort((a, b) => a.center - b.center);
+    for (const op of sorted) {
+      const segEnd = op.center - op.halfWidth;
+      if (segEnd > cursor + 0.01) {
+        houseWall(worldX(lx), y, worldZ((cursor + segEnd) / 2), WALL_T, wallHeight, segEnd - cursor, wallColor);
+      }
+    if (op.type === 'door') {
+        houseWall(worldX(lx), y + doorH, worldZ(op.center), WALL_T, wallHeight - doorH, op.halfWidth * 2, wallColor, true);
+      } else {
+        houseWall(worldX(lx), y, worldZ(op.center), WALL_T, winSill, op.halfWidth * 2, wallColor);
+        glassPane(worldX(lx), y + winSill, worldZ(op.center), WALL_T, winTop - winSill, op.halfWidth * 2);
+        houseWall(worldX(lx), y + winTop, worldZ(op.center), WALL_T, wallHeight - winTop, op.halfWidth * 2, wallColor);
+      }
+      cursor = op.center + op.halfWidth;
+    }
+    if (zEnd > cursor + 0.01) {
+      houseWall(worldX(lx), y, worldZ((cursor + zEnd) / 2), WALL_T, wallHeight, zEnd - cursor, wallColor);
+    }
+  }
+
+  function makeClassroom(sign, roomCenterZ, roomWidthZ, y, wallHeight) {
+    const corridorWallX = sign * CORR_HALF_W;
+    const outerWallX = sign * (CORR_HALF_W + ROOM_DEPTH);
+    const roomCenterX = (corridorWallX + outerWallX) / 2;
+    const zStart = roomCenterZ - roomWidthZ / 2, zEnd = roomCenterZ + roomWidthZ / 2;
+    const doorOffset = roomWidthZ * 0.28;
+
+    openingWallAlongZ(corridorWallX, zStart, zEnd, y, wallHeight, [
+      { center: roomCenterZ - doorOffset, halfWidth: 0.9, type: 'door' },
+      { center: roomCenterZ, halfWidth: 1.2, type: 'window' },
+      { center: roomCenterZ + doorOffset, halfWidth: 0.9, type: 'door' }
+    ]);
+
+    houseWall(worldX(outerWallX), y, worldZ(roomCenterZ), WALL_T, wallHeight, roomWidthZ, wallColor);
+    houseWall(worldX(roomCenterX), y, worldZ(zStart), ROOM_DEPTH, wallHeight, WALL_T, wallColor);
+    houseWall(worldX(roomCenterX), y, worldZ(zEnd), ROOM_DEPTH, wallHeight, WALL_T, wallColor);
+  }
+
+  function makeLockerBank(lx, lz) {
+    for (let i = 0; i < 3; i++) {
+      const x = worldX(lx), z = worldZ(lz + (i - 1) * 0.6);
+      const locker = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 2, 0.6),
+        new THREE.MeshStandardMaterial({ color: lockerColor, flatShading: true })
+      );
+      locker.position.set(x, 1, z);
+      locker.castShadow = locker.receiveShadow = true;
+      scene.add(locker);
+      collisionMeshes.push(locker);
+      colliders.push({ x, z, halfW: 0.25, halfD: 0.3 });
+    }
+  }
+
+  function makeLightBulb(lx, ly, lz) {
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.15, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0xfff2c8, emissive: 0xffdca0, emissiveIntensity: 1.5 })
+    );
+    bulb.position.set(worldX(lx), ly, worldZ(lz));
+    scene.add(bulb);
+    const light = new THREE.PointLight(0xffdca0, 1.1, 14, 2);
+    light.position.copy(bulb.position);
+    scene.add(light);
+  }
+
+  function buildFloor(y, roomCenters, roomWidthZ) {
+    for (const rz of roomCenters) {
+      makeClassroom(1, rz, roomWidthZ, y, WALL_H);
+      makeClassroom(-1, rz, roomWidthZ, y, WALL_H);
+      makeLockerBank(CORR_HALF_W - 0.35, rz);
+      makeLockerBank(-(CORR_HALF_W - 0.35), rz);
+      makeLightBulb(0, y + WALL_H - 0.4, rz);
+    }
+  }
+
+  // ---- Ground floor: 4 classrooms per side ----
+  const FLOOR1_ROOMS = [-13.5, -4.5, 4.5, 13.5];
+  buildFloor(0, FLOOR1_ROOMS, 8);
+  houseWall(worldX(0), 0, worldZ(SOUTH_WALL_Z), BUILD_X_MAX - BUILD_X_MIN, WALL_H * 2, WALL_T, wallColor); // full-height south exterior wall
+
+  // stairwell at the north end of the corridor
+  const STEPS = 8;
+  for (let i = 0; i < STEPS; i++) {
+    const tMid = (i + 0.5) / STEPS;
+    const stepZ = STAIR_Z_START + tMid * (STAIR_Z_END - STAIR_Z_START);
+    const stepY = (i + 0.5) * (WALL_H / STEPS);
+    const step = new THREE.Mesh(
+      new THREE.BoxGeometry(STAIR_HALF_W * 2, WALL_H / STEPS, (STAIR_Z_END - STAIR_Z_START) / STEPS),
+      new THREE.MeshStandardMaterial({ color: 0x2a2a2a, flatShading: true })
+    );
+    step.position.set(worldX(0), stepY, worldZ(stepZ));
+    step.castShadow = step.receiveShadow = true;
+    scene.add(step);
+    collisionMeshes.push(step);
+  }
+  ramps.push({ xMin: worldX(-STAIR_HALF_W), xMax: worldX(STAIR_HALF_W), zStart: worldZ(STAIR_Z_START), zEnd: worldZ(STAIR_Z_END), yStart: 0, yEnd: WALL_H });
+  houseWall(worldX(-STAIR_HALF_W), 0, worldZ((STAIR_Z_START + STAIR_Z_END) / 2), WALL_T, WALL_H * 2, STAIR_Z_END - STAIR_Z_START, wallColor);
+  houseWall(worldX(STAIR_HALF_W), 0, worldZ((STAIR_Z_START + STAIR_Z_END) / 2), WALL_T, WALL_H * 2, STAIR_Z_END - STAIR_Z_START, wallColor);
+  houseWall(worldX(0), 0, worldZ(STAIR_Z_END), STAIR_HALF_W * 2, WALL_H * 2, WALL_T, wallColor);
+  makeLightBulb(0, WALL_H - 0.5, (STAIR_Z_START + STAIR_Z_END) / 2);
+
+  // floor above ground level — one slab covering the whole footprint (stairwell is beyond it, so no hole needed)
+  floorSlab(worldX(0), WALL_H, worldZ((SOUTH_WALL_Z + STAIR_Z_START) / 2), BUILD_X_MAX - BUILD_X_MIN, STAIR_Z_START - SOUTH_WALL_Z, 0x1a1a1a);
+  flatFloors.push({ xMin: worldX(BUILD_X_MIN), xMax: worldX(BUILD_X_MAX), zMin: worldZ(SOUTH_WALL_Z), zMax: worldZ(STAIR_Z_START), y: WALL_H });
+
+  // ---- Second floor: 3 larger classrooms per side, so it visibly reads as a different layout ----
+  buildFloor(WALL_H, [-13, 0, 13], 10);
+
+  // roof
+  const roof = new THREE.Mesh(
+    new THREE.BoxGeometry(BUILD_X_MAX - BUILD_X_MIN + 0.5, 0.3, (STAIR_Z_END - SOUTH_WALL_Z) + 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x101010, flatShading: true })
+  );
+  roof.position.set(worldX(0), WALL_H * 2 + 0.15, worldZ((SOUTH_WALL_Z + STAIR_Z_END) / 2));
+  roof.castShadow = roof.receiveShadow = true;
+  scene.add(roof);
+  collisionMeshes.push(roof);
+
+ // ground-level floor plane under the whole footprint — same texture/tiling as the city ground
+  const schoolGround = new THREE.Mesh(
+    new THREE.PlaneGeometry(80, 80),
+    new THREE.MeshStandardMaterial({ map: concreteTexture })
+  );
+  schoolGround.rotation.x = -Math.PI / 2;
+  schoolGround.position.set(worldX(0), 0, worldZ((SOUTH_WALL_Z + STAIR_Z_END) / 2));
+  schoolGround.receiveShadow = true;
+  scene.add(schoolGround);
+}
+
 // ---------- Procedural elevated platforms (ramped on all sides, flat-topped) ----------
 const PLATFORM_COUNT = 40;
 const PLATFORM_MIN_SIZE = 20;       // base footprint size range
