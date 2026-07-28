@@ -1607,27 +1607,57 @@ function generateSchool() {
   buildFloor(0, FLOOR1_ROOMS, 8);
   houseWall(worldX(0), 0, worldZ(SOUTH_WALL_Z), BUILD_X_MAX - BUILD_X_MIN, WALL_H * 2, WALL_T, wallColor); // full-height south exterior wall
 
-  // stairwell at the north end of the corridor
-  const STEPS = 8;
-  for (let i = 0; i < STEPS; i++) {
-    const tMid = (i + 0.5) / STEPS;
-    const stepZ = STAIR_Z_START + tMid * (STAIR_Z_END - STAIR_Z_START);
-    const stepY = (i + 0.5) * (WALL_H / STEPS);
+// stairwell at the north end of the corridor — switchback: flight up, 180° landing, flight up the other way
+  const HALF_HEIGHT = WALL_H / 2;
+  const FLIGHT1_LENGTH = 5.5;
+  const LANDING_DEPTH = 2;
+  const LANDING_Z_NEAR = STAIR_Z_START + FLIGHT1_LENGTH;
+  const LANDING_Z_FAR = LANDING_Z_NEAR + LANDING_DEPTH;
+  const FLIGHT_STEPS = 6;
+
+  // flight 1 — west half of the stairwell, climbs from the corridor floor up to the landing
+  const flight1StepDepth = FLIGHT1_LENGTH / FLIGHT_STEPS;
+  for (let i = 0; i < FLIGHT_STEPS; i++) {
+    const tMid = (i + 0.5) / FLIGHT_STEPS;
+    const stepZ = STAIR_Z_START + tMid * FLIGHT1_LENGTH;
+    const stepY = (i + 0.5) * (HALF_HEIGHT / FLIGHT_STEPS);
     const step = new THREE.Mesh(
-      new THREE.BoxGeometry(STAIR_HALF_W * 2, WALL_H / STEPS, (STAIR_Z_END - STAIR_Z_START) / STEPS),
+      new THREE.BoxGeometry(STAIR_HALF_W, HALF_HEIGHT / FLIGHT_STEPS, flight1StepDepth),
       new THREE.MeshStandardMaterial({ color: 0x2a2a2a, flatShading: true })
     );
-    step.position.set(worldX(0), stepY, worldZ(stepZ));
+    step.position.set(worldX(-STAIR_HALF_W / 2), stepY, worldZ(stepZ));
     step.castShadow = step.receiveShadow = true;
     scene.add(step);
     collisionMeshes.push(step);
   }
-  ramps.push({ xMin: worldX(-STAIR_HALF_W), xMax: worldX(STAIR_HALF_W), zStart: worldZ(STAIR_Z_START), zEnd: worldZ(STAIR_Z_END), yStart: 0, yEnd: WALL_H });
+  ramps.push({ xMin: worldX(-STAIR_HALF_W), xMax: worldX(0), zStart: worldZ(STAIR_Z_START), zEnd: worldZ(LANDING_Z_NEAR), yStart: 0, yEnd: HALF_HEIGHT });
+
+  // landing — flat platform spanning the full stairwell width, at half height, where the 180° turn happens
+  floorSlab(worldX(0), HALF_HEIGHT, worldZ((LANDING_Z_NEAR + LANDING_Z_FAR) / 2), STAIR_HALF_W * 2, LANDING_DEPTH, 0x2a2a2a);
+  flatFloors.push({ xMin: worldX(-STAIR_HALF_W), xMax: worldX(STAIR_HALF_W), zMin: worldZ(LANDING_Z_NEAR), zMax: worldZ(LANDING_Z_FAR), y: HALF_HEIGHT });
+
+  // flight 2 — east half of the stairwell, climbs from the landing back down to the corridor's z, arriving at full height
+  const flight2Length = LANDING_Z_FAR - STAIR_Z_START;
+  const flight2StepDepth = flight2Length / FLIGHT_STEPS;
+  for (let i = 0; i < FLIGHT_STEPS; i++) {
+    const tMid = (i + 0.5) / FLIGHT_STEPS;
+    const stepZ = LANDING_Z_FAR - tMid * flight2Length;
+    const stepY = HALF_HEIGHT + (i + 0.5) * (HALF_HEIGHT / FLIGHT_STEPS);
+    const step = new THREE.Mesh(
+      new THREE.BoxGeometry(STAIR_HALF_W, HALF_HEIGHT / FLIGHT_STEPS, flight2StepDepth),
+      new THREE.MeshStandardMaterial({ color: 0x2a2a2a, flatShading: true })
+    );
+    step.position.set(worldX(STAIR_HALF_W / 2), stepY, worldZ(stepZ));
+    step.castShadow = step.receiveShadow = true;
+    scene.add(step);
+    collisionMeshes.push(step);
+  }
+  ramps.push({ xMin: worldX(0), xMax: worldX(STAIR_HALF_W), zStart: worldZ(LANDING_Z_FAR), zEnd: worldZ(STAIR_Z_START), yStart: HALF_HEIGHT, yEnd: WALL_H });
+
   houseWall(worldX(-STAIR_HALF_W), 0, worldZ((STAIR_Z_START + STAIR_Z_END) / 2), WALL_T, WALL_H * 2, STAIR_Z_END - STAIR_Z_START, wallColor);
   houseWall(worldX(STAIR_HALF_W), 0, worldZ((STAIR_Z_START + STAIR_Z_END) / 2), WALL_T, WALL_H * 2, STAIR_Z_END - STAIR_Z_START, wallColor);
   houseWall(worldX(0), 0, worldZ(STAIR_Z_END), STAIR_HALF_W * 2, WALL_H * 2, WALL_T, wallColor);
   makeLightBulb(0, WALL_H - 0.5, (STAIR_Z_START + STAIR_Z_END) / 2);
-
   // floor above ground level — one slab covering the whole footprint (stairwell is beyond it, so no hole needed)
   floorSlab(worldX(0), WALL_H, worldZ((SOUTH_WALL_Z + STAIR_Z_START) / 2), BUILD_X_MAX - BUILD_X_MIN, STAIR_Z_START - SOUTH_WALL_Z, 0x1a1a1a);
   flatFloors.push({ xMin: worldX(BUILD_X_MIN), xMax: worldX(BUILD_X_MAX), zMin: worldZ(SOUTH_WALL_Z), zMax: worldZ(STAIR_Z_START), y: WALL_H });
