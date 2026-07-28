@@ -982,7 +982,7 @@ function setInteriorTheme() {
   scene.background = new THREE.Color(0x050505);
   scene.fog.color.set(0x050505);
   scene.fog.near = 5; scene.fog.far = 45;
-  ambientLight.intensity = 0.06;
+  ambientLight.intensity = 0.28;
   sun.intensity = 0;
   sunSprite.visible = false;
   starField.visible = false;
@@ -1587,7 +1587,7 @@ function generateSchool() {
     );
     bulb.position.set(worldX(lx), ly, worldZ(lz));
     scene.add(bulb);
-    const light = new THREE.PointLight(0xffdca0, 1.1, 14, 2);
+    const light = new THREE.PointLight(0xffdca0, 2.2, 22, 1);
     light.position.copy(bulb.position);
     scene.add(light);
   }
