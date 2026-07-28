@@ -32,11 +32,14 @@ grove: [
 // on top of the east wing's roof
     { x: 422, z: 378, onRoof: true }
   ],
-  school: [
-    // ground floor classrooms + corridor
-    { x: 907, z: -13.5 }, { x: 893, z: -4.5 }, { x: 907, z: 4.5 }, { x: 893, z: 13.5 }, { x: 900, z: 0 },
-    // second floor classrooms (onRoof forces an elevated spawn, same as the grove roof points)
-    { x: 907, z: -13, onRoof: true }, { x: 893, z: 0, onRoof: true }, { x: 907, z: 13, onRoof: true }
+ school: [
+    // ground floor classrooms — all 8 rooms (4 per side)
+    { x: 907, z: -13.5 }, { x: 893, z: -13.5 }, { x: 907, z: -4.5 }, { x: 893, z: -4.5 },
+    { x: 907, z: 4.5 }, { x: 893, z: 4.5 }, { x: 907, z: 13.5 }, { x: 893, z: 13.5 },
+    // second floor classrooms — all 6 rooms (3 per side); onRoof forces an elevated spawn
+    { x: 907, z: -13, onRoof: true }, { x: 893, z: -13, onRoof: true },
+    { x: 907, z: 0, onRoof: true }, { x: 893, z: 0, onRoof: true },
+    { x: 907, z: 13, onRoof: true }, { x: 893, z: 13, onRoof: true }
   ]
 };
 const MAP_NAMES = { city: 'City', grove: 'Warkworth Grove', school: 'Bitch Ass School' };
