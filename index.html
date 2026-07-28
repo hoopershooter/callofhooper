@@ -988,7 +988,7 @@ function setInteriorTheme() {
   starField.visible = false;
 }
 
-const grassTexture = new THREE.TextureLoader().load("grass.png", () => {generatePlatforms(); generateCity(); generateWarkworthGrove(); }, undefined,
+const grassTexture = new THREE.TextureLoader().load("grass.png", () => {generatePlatforms(); generateCity(); generateWarkworthGrove(); generateSchool(); }, undefined,
   () => console.error('FAILED TO LOAD: grass.png — check the file is in the same folder as this HTML file'));
   grassTexture.wrapS = THREE.RepeatWrapping;
 grassTexture.wrapT = THREE.RepeatWrapping;
