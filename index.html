@@ -484,10 +484,10 @@ const CHARACTER_COUNT = 10;
 let selectedCharacter = 1;
 
 const WEAPON_STATS = {
-  sniper:   { label: 'Sniper',        damage: 100, magSize: 5,  fireRateMs: 1500, reloadMs: 2200 },
-  assault:  { label: 'Assault Rifle', damage: 25, magSize: 30, fireRateMs: 150,  reloadMs: 1800 },
-  smg:      { label: 'SMG',           damage: 14, magSize: 40, fireRateMs: 80,   reloadMs: 1500 },
-  shotgun:  { label: 'Shotgun',       damage: 45, magSize: 6,  fireRateMs: 850,  reloadMs: 2000 }
+  sniper:   { label: 'Sniper',        damage: 100, magSize: 5,  fireRateMs: 1500, reloadMs: 2200, pelletCount: 1, spreadDegrees: 0 },
+  assault:  { label: 'Assault Rifle', damage: 25, magSize: 30, fireRateMs: 150,  reloadMs: 1800, pelletCount: 1, spreadDegrees: 0 },
+  smg:      { label: 'SMG',           damage: 14, magSize: 20, fireRateMs: 30,   reloadMs: 1500, pelletCount: 1, spreadDegrees: 1 },
+  shotgun:  { label: 'Shotgun',       damage: 12, magSize: 6,  fireRateMs: 850,  reloadMs: 2000, pelletCount: 8, spreadDegrees: 6 }
 };
 const WEAPON_ORDER = ['sniper', 'assault', 'smg', 'shotgun'];
 let selectedWeaponId = 'sniper';   // equipped weapon for the current life
@@ -525,7 +525,7 @@ function renderWeaponGrid(container, activeId, onPick) {
     card.className = 'weaponCard' + (id === activeId ? ' selected' : '');
     card.innerHTML =
       '<h3>' + stats.label + '</h3>' +
-      '<div>Damage: ' + stats.damage + '</div>' +
+      '<div>Damage: ' + (stats.pelletCount > 1 ? (stats.damage + ' x' + stats.pelletCount + ' pellets') : stats.damage) + '</div>' +
       '<div>Mag size: ' + stats.magSize + '</div>' +
       '<div>Fire rate: ' + (stats.fireRateMs < 300 ? 'Fast' : stats.fireRateMs < 900 ? 'Medium' : 'Slow') + '</div>';
     card.addEventListener('click', () => onPick(id));
@@ -2473,22 +2473,20 @@ const AUTO_FIRE_WEAPONS = ['assault', 'smg'];
 let isFiring = false;
 let lastShotTime = 0;
 
-function shoot() {
-  if (isDead) return;
-  if (isReloading) return;
-  if (currentAmmo <= 0) { reload(); return; }
+function getPelletDirection(baseDir, spreadDegrees) {
+  if (spreadDegrees <= 0) return baseDir.clone();
+  const spreadRad = THREE.MathUtils.degToRad(spreadDegrees);
+  const angle = Math.random() * Math.PI * 2;
+  const radius = Math.random() * spreadRad;
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+  return baseDir.clone()
+    .addScaledVector(right, Math.tan(radius) * Math.cos(angle))
+    .addScaledVector(up, Math.tan(radius) * Math.sin(angle))
+    .normalize();
+}
 
-  const now = performance.now();
-  if (now - lastShotTime < WEAPON_STATS[selectedWeaponId].fireRateMs) return;
-  lastShotTime = now;
-  currentAmmo--;
-  updateAmmoHud();
-
-  playSfx(fartSound, SFX_VOLUME);
-
-  const dir = new THREE.Vector3();
-  camera.getWorldDirection(dir);
-
+function firePellet(dir) {
   raycaster.set(camera.position, dir);
   raycaster.camera = camera;
 
@@ -2535,11 +2533,44 @@ function shoot() {
     }
   });
 
-  if (hitDummy) registerHit(hitDummy);
-  if (hitPlayerId) {
-    socket.emit('hitPlayer', { targetId: hitPlayerId });
-    triggerHitmarker(true);
+  return { hitDummy, hitPlayerId };
+}
+
+function shoot() {
+  if (isDead) return;
+  if (isReloading) return;
+  if (currentAmmo <= 0) { reload(); return; }
+
+  const stats = WEAPON_STATS[selectedWeaponId];
+  const now = performance.now();
+  if (now - lastShotTime < stats.fireRateMs) return;
+  lastShotTime = now;
+  currentAmmo--;
+  updateAmmoHud();
+
+  playSfx(fartSound, SFX_VOLUME);
+
+  const baseDir = new THREE.Vector3();
+  camera.getWorldDirection(baseDir);
+
+  const pelletCount = stats.pelletCount || 1;
+  const hitDummies = new Set();
+  const playerPelletHits = {};
+
+  for (let i = 0; i < pelletCount; i++) {
+    const dir = getPelletDirection(baseDir, stats.spreadDegrees || 0);
+    const { hitDummy, hitPlayerId } = firePellet(dir);
+    if (hitDummy) hitDummies.add(hitDummy);
+    if (hitPlayerId) playerPelletHits[hitPlayerId] = (playerPelletHits[hitPlayerId] || 0) + 1;
   }
+
+  for (const d of hitDummies) registerHit(d);
+
+  const hitPlayerIds = Object.keys(playerPelletHits);
+  for (const id of hitPlayerIds) {
+    socket.emit('hitPlayer', { targetId: id, pelletHits: playerPelletHits[id] });
+  }
+  if (hitPlayerIds.length > 0) triggerHitmarker(true);
 }
 function triggerHitmarker(isPlayerHit) {
   hitmarker.classList.remove('active');
