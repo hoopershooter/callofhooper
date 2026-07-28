@@ -29,11 +29,17 @@ grove: [
     { x: 422, z: 378 },
     // on top of the west wing's roof
     { x: 378, z: 378, onRoof: true },
-    // on top of the east wing's roof
+// on top of the east wing's roof
     { x: 422, z: 378, onRoof: true }
+  ],
+  school: [
+    // ground floor classrooms + corridor
+    { x: 907, z: -13.5 }, { x: 893, z: -4.5 }, { x: 907, z: 4.5 }, { x: 893, z: 13.5 }, { x: 900, z: 0 },
+    // second floor classrooms (onRoof forces an elevated spawn, same as the grove roof points)
+    { x: 907, z: -13, onRoof: true }, { x: 893, z: 0, onRoof: true }, { x: 907, z: 13, onRoof: true }
   ]
 };
-const MAP_NAMES = { city: 'City', grove: 'Warkworth Grove' };
+const MAP_NAMES = { city: 'City', grove: 'Warkworth Grove', school: 'Bitch Ass School' };
 
 function pickSpawnPoint(room, excludeId) {
   const points = SPAWN_POINTS[room.mapId] || SPAWN_POINTS.city;
@@ -93,7 +99,7 @@ io.on('connection', (socket) => {
 
   socket.on('createRoom', (data, callback) => {
     const name = (typeof data === 'string') ? data : (data && data.name);
-    const mapId = (data && data.mapId === 'grove') ? 'grove' : 'city';
+    const mapId = (data && data.mapId === 'grove') ? 'grove' : (data && data.mapId === 'school') ? 'school' : 'city';
     const roomId = 'room-' + (nextRoomId++);
     const safeName = (name && name.trim()) ? name.trim().slice(0, 30) : ('Server ' + roomId);
     rooms[roomId] = { id: roomId, name: safeName, mapId, players: new Map(), maxPlayers: MAX_PLAYERS_PER_ROOM };
