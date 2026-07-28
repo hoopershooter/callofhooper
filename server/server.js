@@ -8,10 +8,10 @@ const SPAWN_PROTECTION_MS = 3000;
 const ADMIN_KEY = "hooper-admin-2026";
 const MAX_HEALTH = 100;
 const WEAPON_STATS = {
-  sniper: { damage: 100 },
-  assault: { damage: 25 },
-  smg: { damage: 14 },
-  shotgun: { damage: 45 }
+  sniper: { damage: 100, pelletCount: 1 },
+  assault: { damage: 25, pelletCount: 1 },
+  smg: { damage: 14, pelletCount: 1 },
+  shotgun: { damage: 12, pelletCount: 8 }
 };
 const DEFAULT_WEAPON = 'sniper';
 
@@ -217,7 +217,8 @@ socket.on('hitPlayer', (data) => {
     if (Date.now() < (target.invulnerableUntil || 0)) return;
 
     const stats = WEAPON_STATS[killer.weaponId] || WEAPON_STATS[DEFAULT_WEAPON];
-    target.health = (target.health == null ? MAX_HEALTH : target.health) - stats.damage;
+    const pelletHits = Math.max(1, Math.min(Number(data.pelletHits) || 1, stats.pelletCount || 1));
+    target.health = (target.health == null ? MAX_HEALTH : target.health) - stats.damage * pelletHits;
 
     if (target.health > 0) {
       io.to(roomId).emit('playerDamaged', { targetId, health: target.health, maxHealth: target.maxHealth || MAX_HEALTH });
