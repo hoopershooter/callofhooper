@@ -445,11 +445,14 @@ function renderRoomList(rooms) {
 function joinRoom(roomId) {
   socket.emit('joinRoom', { roomId, character: selectedCharacter, weaponId: selectedWeaponId, username: getLocalUsername() }, async (response) => {
     if (response.success) {
-      currentRoomId = response.roomId;
+currentRoomId = response.roomId;
       serverListScreen.classList.add('hidden');
       gameOverlay.classList.remove('hidden');
 
- const spawnFeetHint = response.spawnOnRoof ? 999 : -Infinity; // forces getGroundHeight to pick the roof surface vs the floor below it
+      if (grassReady) generateMap(response.mapId);
+      else pendingMapId = response.mapId; // generates as soon as grass.png finishes loading — in practice it's already loaded well before this point
+
+      const spawnFeetHint = response.spawnOnRoof ? 999 : -Infinity; // forces getGroundHeight to pick the roof surface vs the floor below it
       const spawnY = getGroundHeight(response.spawnX, response.spawnZ, spawnFeetHint) + EYE_HEIGHT;
       camera.position.set(response.spawnX, spawnY, response.spawnZ);
       verticalVelocity = 0;
@@ -988,7 +991,22 @@ function setInteriorTheme() {
   starField.visible = false;
 }
 
-const grassTexture = new THREE.TextureLoader().load("grass.png", () => {generatePlatforms(); generateCity(); generateWarkworthGrove(); generateSchool(); }, undefined,
+let grassReady = false;
+let pendingMapId = null;
+const mapGenerated = { city: false, grove: false, school: false };
+
+function generateMap(mapId) {
+  if (!mapId || mapGenerated[mapId]) return; // only ever builds a given map once per session
+  mapGenerated[mapId] = true;
+  if (mapId === 'city') { generatePlatforms(); generateCity(); }
+  else if (mapId === 'grove') { generateWarkworthGrove(); }
+  else if (mapId === 'school') { generateSchool(); }
+}
+
+const grassTexture = new THREE.TextureLoader().load("grass.png", () => {
+  grassReady = true;
+  if (pendingMapId) { generateMap(pendingMapId); pendingMapId = null; }
+}, undefined,
   () => console.error('FAILED TO LOAD: grass.png — check the file is in the same folder as this HTML file'));
   grassTexture.wrapS = THREE.RepeatWrapping;
 grassTexture.wrapT = THREE.RepeatWrapping;
