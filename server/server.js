@@ -11,7 +11,7 @@ const WEAPON_STATS = {
   sniper: { damage: 100, pelletCount: 1 },
   assault: { damage: 25, pelletCount: 1 },
   smg: { damage: 14, pelletCount: 1 },
-  shotgun: { damage: 12, pelletCount: 8 }
+  shotgun: { damage: 18, pelletCount: 8 }
 };
 const DEFAULT_WEAPON = 'sniper';
 
